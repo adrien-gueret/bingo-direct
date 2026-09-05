@@ -263,13 +263,7 @@ const createBingoImageFile = async (
 
   drawPosterBackground(context, canvas.width, canvas.height, palette);
 
-  context.fillStyle = "#ffffff";
-  context.font = '900 82px "Archivo Black", Arial, sans-serif';
-  context.fillText(bingo.title || "Bingo Direct", padding, 100);
-  context.font = "500 30px Arial, sans-serif";
-  context.globalAlpha = 0.84;
-  context.fillText(bingo.subtitle, padding, 149);
-  context.globalAlpha = 1;
+  let chipX = size - padding;
 
   if (bingo.author) {
     const chipText = `${locale === "fr" ? "par" : "by"} ${bingo.author}`;
@@ -278,7 +272,7 @@ const createBingoImageFile = async (
     const chipHeight = 52;
     const textWidth = context.measureText(chipText).width;
     const chipWidth = textWidth + paddingX * 2;
-    const chipX = size - padding - chipWidth;
+    chipX = size - padding - chipWidth;
     const chipY = 44;
 
     context.save();
@@ -301,6 +295,35 @@ const createBingoImageFile = async (
     context.textAlign = "left";
     context.textBaseline = "alphabetic";
   }
+
+  context.fillStyle = "#ffffff";
+  context.font = '900 82px "Archivo Black", Arial, sans-serif';
+  context.textAlign = "left";
+  context.textBaseline = "alphabetic";
+  const titleMaxWidth = Math.max(
+    220,
+    bingo.author ? chipX - padding - 32 : boardSize,
+  );
+  const titleLines = linesForText(
+    context,
+    bingo.title || "Bingo Direct",
+    titleMaxWidth,
+    2,
+  );
+  const titleBaseline = 92;
+  const titleLineHeight = 78;
+  titleLines.forEach((line, index) => {
+    context.fillText(line, padding, titleBaseline + index * titleLineHeight);
+  });
+
+  context.font = "500 30px Arial, sans-serif";
+  context.globalAlpha = 0.84;
+  context.fillText(
+    bingo.subtitle,
+    padding,
+    titleBaseline + (titleLines.length - 1) * titleLineHeight + 47,
+  );
+  context.globalAlpha = 1;
 
   const cellImages = await Promise.all(
     bingo.cells.map((cell) => loadStoredImage(cell.image)),
