@@ -59,6 +59,7 @@ export const messages = {
       `Ajouter une prédiction à la case ${index}`,
     editPrediction: (index: number) =>
       `Modifier la prédiction de la case ${index}`,
+    dragToReorder: "Fais glisser une case sur une autre pour les intervertir",
     cellEditorTitle: (index: number) => `Case ${index}`,
     done: "Terminer",
     removeImage: "Supprimer l’image",
@@ -161,6 +162,7 @@ export const messages = {
     predictionPlaceholder: "Your prediction…",
     addPrediction: (index: number) => `Add a prediction to cell ${index}`,
     editPrediction: (index: number) => `Edit prediction for cell ${index}`,
+    dragToReorder: "Drag a cell onto another one to swap their positions",
     cellEditorTitle: (index: number) => `Cell ${index}`,
     done: "Done",
     removeImage: "Remove image",

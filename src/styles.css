@@ -718,6 +718,26 @@ main {
   box-shadow: none;
 }
 
+.bingo-grid.is-editing .edit-preview:not(.is-empty) {
+  cursor: grab;
+}
+
+.bingo-grid.is-editing .edit-preview:not(.is-empty):hover {
+  background: #e7e7e7;
+}
+
+.bingo-grid.is-editing .edit-preview.is-dragging {
+  cursor: grabbing;
+  opacity: 0.45;
+  transform: scale(0.94);
+}
+
+.bingo-grid.is-editing .edit-preview.is-drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 25%, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .edit-empty-plus {
   font-size: clamp(26px, 4vw, 50px);
   font-weight: 300;

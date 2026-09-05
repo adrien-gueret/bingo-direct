@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type SetStateAction,
+} from "react";
 import { createStarterBingo, emptyBingo, getSuggestions } from "./data";
 import {
   createGridPreviewDataUrl,
@@ -75,6 +81,8 @@ function App({ initialLocale }: AppProps) {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [editingCellIndex, setEditingCellIndex] = useState<number | null>(null);
+  const [draggedCellIndex, setDraggedCellIndex] = useState<number | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const [isImageImporting, setIsImageImporting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [notice, setNotice] = useState("");
@@ -86,6 +94,7 @@ function App({ initialLocale }: AppProps) {
   const cellEditorDialogRef = useRef<HTMLElement>(null);
   const cellEditorCloseRef = useRef<HTMLButtonElement>(null);
   const cellTriggerRefs = useRef(new Map<number, HTMLButtonElement>());
+  const didDropCellRef = useRef(false);
   const activeGrid =
     grids.find((storedGrid) => storedGrid.id === activeId) ?? grids[0];
   const bingo = activeGrid.bingo;
@@ -422,6 +431,73 @@ function App({ initialLocale }: AppProps) {
       else next.add(index);
       return next;
     });
+  };
+
+  const startCellDrag = (
+    event: DragEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (mode !== "edit" || !isCellFilled(bingo.cells[index])) return;
+    didDropCellRef.current = false;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+    setDraggedCellIndex(index);
+  };
+
+  const allowCellDrop = (
+    event: DragEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (mode !== "edit" || draggedCellIndex === null) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetIndex(index);
+  };
+
+  const dropCell = (
+    event: DragEvent<HTMLButtonElement>,
+    targetIndex: number,
+  ) => {
+    event.preventDefault();
+    const sourceIndex = draggedCellIndex;
+    if (mode !== "edit" || sourceIndex === null) return;
+
+    didDropCellRef.current = true;
+    if (sourceIndex !== targetIndex) {
+      setBingo((current) => {
+        const cells = [...current.cells];
+        [cells[sourceIndex], cells[targetIndex]] = [
+          cells[targetIndex],
+          cells[sourceIndex],
+        ];
+        return { ...current, cells };
+      });
+      setChecked((current) => {
+        const next = new Set(current);
+        const sourceIsChecked = next.has(sourceIndex);
+        const targetIsChecked = next.has(targetIndex);
+        if (sourceIsChecked) next.add(targetIndex);
+        else next.delete(targetIndex);
+        if (targetIsChecked) next.add(sourceIndex);
+        else next.delete(sourceIndex);
+        return next;
+      });
+    }
+    setDraggedCellIndex(null);
+    setDropTargetIndex(null);
+  };
+
+  const endCellDrag = () => {
+    setDraggedCellIndex(null);
+    setDropTargetIndex(null);
+  };
+
+  const handleCellClick = (index: number) => {
+    if (didDropCellRef.current) {
+      didDropCellRef.current = false;
+      return;
+    }
+    openCellEditor(index);
   };
 
   const addSuggestion = (suggestion: BingoCell) => {
@@ -769,15 +845,25 @@ function App({ initialLocale }: AppProps) {
                           cellTriggerRefs.current.set(index, element);
                         else cellTriggerRefs.current.delete(index);
                       }}
-                      className={`bingo-cell play-cell edit-preview ${cell.image ? "has-image" : ""} ${cell.image && !cell.text ? "image-only" : ""} ${!isCellFilled(cell) ? "is-empty" : ""}`}
+                      className={`bingo-cell play-cell edit-preview ${cell.image ? "has-image" : ""} ${cell.image && !cell.text ? "image-only" : ""} ${!isCellFilled(cell) ? "is-empty" : ""} ${draggedCellIndex === index ? "is-dragging" : ""} ${dropTargetIndex === index && draggedCellIndex !== index ? "is-drop-target" : ""}`}
                       key={index}
                       type="button"
-                      onClick={() => openCellEditor(index)}
+                      draggable={isCellFilled(cell)}
+                      onClick={() => handleCellClick(index)}
+                      onDragStart={(event) => startCellDrag(event, index)}
+                      onDragEnter={(event) => allowCellDrop(event, index)}
+                      onDragOver={(event) => allowCellDrop(event, index)}
+                      onDrop={(event) => dropCell(event, index)}
+                      onDragEnd={endCellDrag}
                       aria-label={
                         isCellFilled(cell)
                           ? t.editPrediction(index + 1)
                           : t.addPrediction(index + 1)
                       }
+                      aria-description={
+                        isCellFilled(cell) ? t.dragToReorder : undefined
+                      }
+                      title={isCellFilled(cell) ? t.dragToReorder : undefined}
                     >
                       {isCellFilled(cell) ? (
                         <>
