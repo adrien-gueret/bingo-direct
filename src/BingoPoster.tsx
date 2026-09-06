@@ -170,7 +170,7 @@ export function ScaledPoster(props: Props) {
     return () => observer.disconnect();
   }, []);
   return <div ref={frame} className="poster-frame" style={{ height: 926 * scale }}>
-    <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: 800 }}>
+    <div style={{ position: "absolute", top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: "top left", width: 800 }}>
       <BingoPoster {...props} />
     </div>
   </div>;

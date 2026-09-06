@@ -265,6 +265,7 @@ main {
 
 .editor-card,
 .board-card {
+  min-width: 0;
   border: 1px solid rgba(37, 28, 29, 0.09);
   background: rgba(255, 255, 255, 0.93);
   border-radius: 20px;
@@ -1467,7 +1468,7 @@ main {
 @media (max-width: 940px) {
   .workspace {
     width: min(760px, calc(100% - 32px));
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .editor-card {
