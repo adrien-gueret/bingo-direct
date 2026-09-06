@@ -4,7 +4,7 @@ import mkcert from "vite-plugin-mkcert";
 import { resolve } from "path";
 
 export default defineConfig({
-  base: "/bingo-direct/",
+  base: "./",
   plugins: [react(), mkcert()],
   resolve: {
     alias: {

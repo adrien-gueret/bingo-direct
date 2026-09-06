@@ -1,3 +1,4 @@
+import { ScaledPoster } from "./BingoPoster";
 import {
   useEffect,
   useRef,
@@ -11,7 +12,6 @@ import {
   getSuggestions,
   gridDimensions,
   resizeBingo,
-  winningLines,
 } from "./data";
 import {
   createGridPreviewDataUrl,
@@ -124,12 +124,6 @@ function App({ initialLocale }: AppProps) {
     }
   }, [bingo.theme]);
   const filledCellCount = bingo.cells.filter(isCellFilled).length;
-  const checkedVisibleCellCount = [...checked].filter((index) =>
-    isCellFilled(bingo.cells[index]),
-  ).length;
-  const wins = winningLines(checked, rows, columns);
-  const winningCells = new Set(wins.flat());
-
   const setBingo = (value: SetStateAction<BingoData>) => {
     setSaveStatus("saving");
     setGrids((current) =>
@@ -137,41 +131,14 @@ function App({ initialLocale }: AppProps) {
         if (storedGrid.id !== activeId) return storedGrid;
         const nextBingo =
           typeof value === "function" ? value(storedGrid.bingo) : value;
-        const nextPreview = storedGrid.preview || "";
-        void createGridPreviewDataUrl(nextBingo).then((preview) => {
-          setGrids((latest) =>
-            latest.map((grid) =>
-              grid.id === activeId && grid.bingo === nextBingo
-                ? {
-                    ...grid,
-                    bingo: nextBingo,
-                    preview: preview || nextPreview || "",
-                    updatedAt: new Date().toISOString(),
-                  }
-                : grid,
-            ),
-          );
-        });
         return {
           ...storedGrid,
           bingo: nextBingo,
-          preview: nextPreview,
+          preview: "",
           updatedAt: new Date().toISOString(),
         };
       }),
     );
-  };
-
-  const refreshGridPreview = (grid: StoredBingo) => {
-    void createGridPreviewDataUrl(grid.bingo).then((preview) => {
-      setGrids((current) =>
-        current.map((storedGrid) =>
-          storedGrid.id === grid.id
-            ? { ...storedGrid, preview: preview || storedGrid.preview || "" }
-            : storedGrid,
-        ),
-      );
-    });
   };
 
   useEffect(() => {
@@ -194,12 +161,14 @@ function App({ initialLocale }: AppProps) {
     let isCancelled = false;
     const missing = grids.filter((grid) => !grid.preview);
     if (missing.length === 0) return;
-    void Promise.all(
-      missing.map(async (grid) => ({
-        id: grid.id,
-        preview: await createGridPreviewDataUrl(grid.bingo),
-      })),
-    ).then((results) => {
+    const timer = window.setTimeout(() => { void (async () => {
+      const results = [];
+      for (const grid of missing) {
+        if (isCancelled) return [];
+        results.push({ id: grid.id, preview: await createGridPreviewDataUrl(grid.bingo, locale) });
+      }
+      return results;
+    })().then((results) => {
       if (isCancelled) return;
       const previews = new Map(
         results
@@ -214,11 +183,12 @@ function App({ initialLocale }: AppProps) {
             : grid,
         ),
       );
-    });
+    }); }, 700);
     return () => {
       isCancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [grids, isLibraryReady]);
+  }, [grids, isLibraryReady, locale]);
 
   useEffect(() => {
     if (!isLibraryReady) return;
@@ -523,7 +493,6 @@ function App({ initialLocale }: AppProps) {
 
   const startNew = () => {
     const newGrid = createStoredBingo(emptyBingo(locale));
-    refreshGridPreview(newGrid);
     setGrids((current) => [newGrid, ...current]);
     setActiveId(newGrid.id);
     setChecked(new Set());
@@ -546,7 +515,6 @@ function App({ initialLocale }: AppProps) {
       ...cloneBingo(storedGrid.bingo),
       title: `${sourceTitle.slice(0, Math.max(0, 36 - suffix.length))}${suffix}`,
     });
-    refreshGridPreview(duplicate);
     setGrids((current) => [duplicate, ...current]);
     setActiveId(duplicate.id);
     setChecked(new Set());
@@ -636,6 +604,14 @@ function App({ initialLocale }: AppProps) {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));
+
+  const download = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    try { await exportBingoImage(bingo, checked, locale); }
+    catch { setNotice(t.imageShareFailed); }
+    finally { setIsSharing(false); }
+  };
 
   const share = async () => {
     if (isSharing) return;
@@ -887,7 +863,8 @@ function App({ initialLocale }: AppProps) {
                 <button
                   className="icon-button"
                   type="button"
-                  onClick={() => exportBingoImage(bingo, checked, locale)}
+                  onClick={download}
+                  disabled={isSharing}
                   title={t.exportPng}
                 >
                   ↓ <span>PNG</span>
@@ -895,122 +872,9 @@ function App({ initialLocale }: AppProps) {
               </div>
             </div>
 
-            <div className="bingo-poster">
-              <div className="poster-header">
-                <div>
-                  <h2>{bingo.title || "Bingo Direct"}</h2>
-                  <p>{bingo.subtitle}</p>
-                </div>
-                {bingo.author && (
-                  <span className="author-chip">
-                    {t.by} {bingo.author}
-                  </span>
-                )}
-              </div>
-
-              <div
-                style={{
-                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                  gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-                }}
-                className={`bingo-grid ${mode === "edit" ? "is-editing" : "is-playing"}`}
-              >
-                {bingo.cells.map((cell, index) =>
-                  mode === "edit" ? (
-                    <button
-                      ref={(element) => {
-                        if (element)
-                          cellTriggerRefs.current.set(index, element);
-                        else cellTriggerRefs.current.delete(index);
-                      }}
-                      className={`bingo-cell play-cell edit-preview ${cell.image ? "has-image" : ""} ${cell.image && !cell.text ? "image-only" : ""} ${!isCellFilled(cell) ? "is-empty" : ""} ${draggedCellIndex === index ? "is-dragging" : ""} ${dropTargetIndex === index && draggedCellIndex !== index ? "is-drop-target" : ""}`}
-                      key={index}
-                      type="button"
-                      draggable={isCellFilled(cell)}
-                      onClick={() => handleCellClick(index)}
-                      onDragStart={(event) => startCellDrag(event, index)}
-                      onDragEnter={(event) => allowCellDrop(event, index)}
-                      onDragOver={(event) => allowCellDrop(event, index)}
-                      onDrop={(event) => dropCell(event, index)}
-                      onDragEnd={endCellDrag}
-                      aria-label={
-                        isCellFilled(cell)
-                          ? t.editPrediction(index + 1)
-                          : t.addPrediction(index + 1)
-                      }
-                      aria-description={
-                        isCellFilled(cell) ? t.dragToReorder : undefined
-                      }
-                      title={isCellFilled(cell) ? t.dragToReorder : undefined}
-                    >
-                      {isCellFilled(cell) ? (
-                        <>
-                          {cell.image && (
-                            <img
-                              className="cell-image"
-                              src={cell.image}
-                              alt=""
-                            />
-                          )}
-                          {cell.text && (
-                            <span className="cell-text">{cell.text}</span>
-                          )}
-                          <span className="checkmark" aria-hidden="true">
-                            ✓
-                          </span>
-                        </>
-                      ) : (
-                        <span className="edit-empty-plus" aria-hidden="true">
-                          +
-                        </span>
-                      )}
-                    </button>
-                  ) : !isCellFilled(cell) ? (
-                    <div
-                      className="bingo-cell empty-play-cell"
-                      key={index}
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <button
-                      className={`bingo-cell play-cell ${cell.image ? "has-image" : ""} ${cell.image && !cell.text ? "image-only" : ""} ${checked.has(index) ? "checked" : ""} ${winningCells.has(index) ? "winner" : ""}`}
-                      key={index}
-                      type="button"
-                      onClick={() => toggleCell(index)}
-                      aria-pressed={checked.has(index)}
-                      aria-label={`${cell.text || t.imageCell(index + 1)}${checked.has(index) ? t.checkedSuffix : ""}`}
-                    >
-                      {cell.image && (
-                        <img className="cell-image" src={cell.image} alt="" />
-                      )}
-                      {cell.text && (
-                        <span className="cell-text">{cell.text}</span>
-                      )}
-                      <span className="checkmark" aria-hidden="true">
-                        ✓
-                      </span>
-                    </button>
-                  ),
-                )}
-              </div>
-
-              <div className="poster-footer">
-                <span>
-                  {mode === "edit"
-                    ? t.cellsFilled(filledCellCount, bingo.cells.length)
-                    : t.announcementsChecked(
-                        checkedVisibleCellCount,
-                        filledCellCount,
-                      )}
-                </span>
-                {wins.length > 0 && (
-                  <span className="bingo-alert visible">
-                    {`BINGO × ${wins.length} !`}
-                  </span>
-                )}
-                <span>Bingo Direct</span>
-              </div>
-            </div>
+            <ScaledPoster bingo={bingo} checked={checked} locale={locale} mode={mode}
+              controls={{ cellTriggerRefs, draggedCellIndex, dropTargetIndex, handleCellClick,
+                startCellDrag, allowCellDrop, dropCell, endCellDrag, toggleCell }} />
           </section>
         </div>
       </main>

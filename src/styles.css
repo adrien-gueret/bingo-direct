@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600;700&display=swap");
 
 :root {
   font-family:
@@ -1672,3 +1671,24 @@ main {
 .grid-size-picker button { min-height: 44px; border: 1px solid #ded8d5; border-radius: 8px; background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
 .grid-size-picker button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
 .grid-size-picker p { font-size: 12px; color: #625a5b; }
+
+/* Canonical poster geometry: viewport rules never change this layout. */
+.poster-frame { position: relative; width: 100%; min-width: 0; overflow: hidden; border-radius: 14px; }
+.canonical-poster { width: 800px; height: 926px; padding: 32px; border-radius: 0; font-family: "DM Sans", sans-serif; font-synthesis: none; }
+.canonical-poster .poster-header { position: absolute; top: 24px; left: 32px; right: 32px; height: 108px; margin: 0; padding: 0; gap: 16px; }
+.canonical-poster .poster-header > div { min-width: 0; flex: 1; }
+.canonical-poster .poster-header h2 { font-family: "Archivo Black", sans-serif; font-size: 38px; font-weight: 400; line-height: 1.04; letter-spacing: -1.5px; overflow-wrap: anywhere; }
+.canonical-poster .poster-header p { font-size: 13px; line-height: 1.2; margin: 8px 0 0; overflow-wrap: anywhere; }
+.canonical-poster .author-chip { font-size: 9px; max-width: 190px; padding: 7px 10px; overflow-wrap: anywhere; }
+.canonical-poster .bingo-grid { position: absolute; top: 144px; left: 32px; width: 736px; height: 736px; gap: 9px; }
+.canonical-poster .bingo-cell { border-width: 2px; border-radius: 9px; box-shadow: 0 7px 18px rgba(55, 0, 5, 0.16); }
+.canonical-poster .play-cell { padding: 10px; gap: 6px; transition: none; }
+.canonical-poster .play-cell:hover { transform: none; }
+.canonical-poster .cell-image { height: 54%; min-height: 0; flex-shrink: 1; object-fit: cover; border-radius: 5px; }
+.canonical-poster .cell-text { font-size: 14px; font-weight: 700; line-height: 1.12; flex-shrink: 0; overflow-wrap: anywhere; white-space: normal; }
+.canonical-poster .image-only .cell-image { height: 100%; border-radius: inherit; }
+.canonical-poster .checkmark { top: 7px; right: 7px; width: 23px; height: 23px; font-size: 13px; transition: none; }
+.canonical-poster .play-cell.winner { animation: none; }
+.canonical-poster .edit-empty-plus { font-size: 40px; }
+.canonical-poster .poster-footer { position: absolute; top: 895px; left: 32px; right: 32px; margin: 0; padding: 0; font-size: 9px; gap: 12px; }
+.library-preview-image { object-fit: contain; }

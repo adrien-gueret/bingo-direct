@@ -66,3 +66,22 @@ Le build conserve `base: './'`, il peut donc être publié à la racine ou dans 
 Une image partagée ne peut pas être rouverte comme grille interactive sur un autre appareil et la bibliothèque n’est pas synchronisée entre appareils. Un export/import JSON pourra être ajouté ultérieurement si ce besoin apparaît, sans nécessiter de backend.
 
 Ce projet de fans n’est pas affilié à Nintendo.
+
+## Rendu et export PNG
+
+`BingoPoster` est commun ? la grille interactive et ? l?export. Sa mise en page
+est fix?e ? 800 ? 926 unit?s CSS ; `ScaledPoster` adapte uniquement son ?chelle
+? la largeur disponible. Les r?gles `.canonical-poster` ne doivent pas d?pendre
+du viewport. `fitPosterText` ajuste les textes longs apr?s chargement des polices.
+
+Les polices sont incluses dans le build. `html-to-image` capture une instance
+hors ?cran du m?me composant, avec les cases coch?es et sans les contr?les
+d??dition. Les images et polices sont charg?es avant la capture. Le PNG reste
+limit? ? 1400 ? 1620 pixels ind?pendamment du pixel ratio du t?l?phone.
+Le partage natif conserve le t?l?chargement comme solution de secours.
+
+Tests de r?gression : `node tests/grid.test.mjs` et `node tests/poster.test.mjs`.
+Ils v?rifient les donn?es et le contenu rendu, pas la rasterisation navigateur.
+Avant mise en production, comparer l?aper?u et le PNG sur desktop et mobile
+(Chrome/Android et Safari/iOS), notamment les l?gendes longues avec image,
+les grilles 2 ? 5 et 5 ? 2, les polices, le partage et le t?l?chargement.
