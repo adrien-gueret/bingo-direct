@@ -80,6 +80,8 @@ export const createStarterBingo = (locale: Locale): BingoData => {
 
   return {
     version: 1,
+    rows: 5,
+    columns: 5,
     title: "Bingo Direct",
     subtitle:
       locale === "fr"
@@ -100,3 +102,36 @@ export const emptyBingo = (locale: Locale): BingoData => ({
       : "25 predictions. How many will come true?",
   cells: Array.from({ length: CELL_COUNT }, () => ({ text: "", image: "" })),
 });
+
+// Missing dimensions identify grids saved before configurable sizes existed.
+export const gridDimensions = (bingo: BingoData) => ({
+  rows: bingo.rows ?? 5,
+  columns: bingo.columns ?? 5,
+});
+
+export const resizeBingo = (bingo: BingoData, rows: number, columns: number): BingoData => {
+  const previous = gridDimensions(bingo);
+  return {
+    ...bingo, rows, columns,
+    cells: Array.from({ length: rows * columns }, (_, index) => {
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      return row < previous.rows && column < previous.columns
+        ? { ...bingo.cells[row * previous.columns + column] }
+        : { text: "", image: "" };
+    }),
+  };
+};
+
+export const winningLines = (checked: Set<number>, rows: number, columns: number) => {
+  const lines: number[][] = [];
+  for (let row = 0; row < rows; row += 1)
+    lines.push(Array.from({ length: columns }, (_, column) => row * columns + column));
+  for (let column = 0; column < columns; column += 1)
+    lines.push(Array.from({ length: rows }, (_, row) => row * columns + column));
+  if (rows === columns) {
+    lines.push(Array.from({ length: rows }, (_, i) => i * columns + i));
+    lines.push(Array.from({ length: rows }, (_, i) => i * columns + columns - 1 - i));
+  }
+  return lines.filter((line) => line.every((index) => checked.has(index)));
+};

@@ -16,7 +16,7 @@ export const messages = {
     share: "Partager l’image",
     heroTitle: "Et toi, tu paries sur quoi ?",
     heroSubtitle:
-      "Compose tes 25 prédictions, partage ta grille et coche les annonces en direct.",
+      "Compose tes prédictions, partage ta grille et coche les annonces en direct.",
     editorLabel: "Personnalisation de la grille",
     saving: "Sauvegarde…",
     saved: "Sauvegardé",
@@ -29,6 +29,12 @@ export const messages = {
     optional: "facultatif",
     nicknamePlaceholder: "@VotreNom",
     mood: "Ambiance",
+    gridSize: "Format de la grille",
+    rows: "Lignes",
+    columns: "Colonnes",
+    resizeGrid: "Réduire la grille",
+    confirmResize: (count: number, rows: number, columns: number) =>
+      `Passer à ${rows} lignes et ${columns} colonnes supprimera ${count} case${count > 1 ? "s" : ""} remplie${count > 1 ? "s" : ""}. Continuer ?`,
     themeLabels: {
       red: "Rouge",
       violet: "Violet",
@@ -71,10 +77,11 @@ export const messages = {
     imageAdded: "Image ajoutée",
     imageLoadFailed: "Cette image ne peut pas être ajoutée.",
     checkedSuffix: ", cochée",
-    cellsFilled: (count: number) => `${count}/25 cases remplies`,
+    cellsFilled: (count: number, total = 25) =>
+      `${count}/${total} cases remplies`,
     announcementsChecked: (count: number, total: number) =>
       `${count}/${total} ${total === 1 ? "annonce cochée" : "annonces cochées"}`,
-    footerCredit: "Un projet par",
+    footerCredit: "Un outil par",
     footerFun: [
       "Fait avec beaucoup trop d'espoir derrière la tête.",
       "Aucune annonce n'a été spoilée pendant la fabrication de ce bingo.",
@@ -96,7 +103,7 @@ export const messages = {
     untitledGrid: "Grille sans titre",
     noSubtitle: "Aucun sous-titre",
     openGrid: (name: string) => `Ouvrir la grille ${name}`,
-    filledCells: (count: number) => `${count}/25 remplies`,
+    filledCells: (count: number, total = 25) => `${count}/${total} remplies`,
     updatedAt: (date: string) => `modifiée le ${date}`,
     duplicate: "Dupliquer",
     deleteGrid: "Supprimer",
@@ -121,7 +128,7 @@ export const messages = {
     share: "Share image",
     heroTitle: "So, what are you betting on?",
     heroSubtitle:
-      "Make 25 predictions, share your grid and check off announcements live.",
+      "Make your predictions, share your grid and check off announcements live.",
     editorLabel: "Customize the grid",
     saving: "Saving…",
     saved: "Saved",
@@ -134,6 +141,12 @@ export const messages = {
     optional: "optional",
     nicknamePlaceholder: "@YourName",
     mood: "Theme",
+    gridSize: "Grid layout",
+    rows: "Rows",
+    columns: "Columns",
+    resizeGrid: "Shrink grid",
+    confirmResize: (count: number, rows: number, columns: number) =>
+      `Changing to ${rows} rows and ${columns} columns will delete ${count} filled cell${count > 1 ? "s" : ""}. Continue?`,
     themeLabels: {
       red: "Red",
       violet: "Purple",
@@ -174,10 +187,11 @@ export const messages = {
     imageAdded: "Image added",
     imageLoadFailed: "This image cannot be added.",
     checkedSuffix: ", checked",
-    cellsFilled: (count: number) => `${count}/25 cells filled`,
+    cellsFilled: (count: number, total = 25) =>
+      `${count}/${total} cells filled`,
     announcementsChecked: (count: number, total: number) =>
       `${count}/${total} ${total === 1 ? "announcement checked" : "announcements checked"}`,
-    footerCredit: "A project by",
+    footerCredit: "A tool by",
     footerFun: [
       "Made with way too much hope behind the scenes.",
       "No announcement was spoiled during the making of this bingo.",
@@ -199,7 +213,7 @@ export const messages = {
     untitledGrid: "Untitled grid",
     noSubtitle: "No subtitle",
     openGrid: (name: string) => `Open the ${name} grid`,
-    filledCells: (count: number) => `${count}/25 filled`,
+    filledCells: (count: number, total = 25) => `${count}/${total} filled`,
     updatedAt: (date: string) => `updated ${date}`,
     duplicate: "Duplicate",
     deleteGrid: "Delete",

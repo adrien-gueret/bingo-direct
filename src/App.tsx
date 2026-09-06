@@ -5,7 +5,14 @@ import {
   type DragEvent,
   type SetStateAction,
 } from "react";
-import { createStarterBingo, emptyBingo, getSuggestions } from "./data";
+import {
+  createStarterBingo,
+  emptyBingo,
+  getSuggestions,
+  gridDimensions,
+  resizeBingo,
+  winningLines,
+} from "./data";
 import {
   createGridPreviewDataUrl,
   exportBingoImage,
@@ -24,7 +31,10 @@ import type { BingoCell, BingoData, Locale } from "./types";
 
 type Mode = "edit" | "play";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
-type Confirmation = { kind: "clear" } | { kind: "delete"; grid: StoredBingo };
+type Confirmation =
+  | { kind: "resize"; rows: number; columns: number; removed: number }
+  | { kind: "clear" }
+  | { kind: "delete"; grid: StoredBingo };
 
 type AppProps = {
   initialLocale: Locale;
@@ -50,18 +60,6 @@ const cloneBingo = (bingo: BingoData): BingoData => ({
 
 const isCellFilled = (cell: BingoCell) =>
   Boolean(cell.text.trim() || cell.image);
-
-const winningLines = (checked: Set<number>) => {
-  const lines: number[][] = [];
-  for (let row = 0; row < 5; row += 1) {
-    lines.push(Array.from({ length: 5 }, (_, column) => row * 5 + column));
-  }
-  for (let column = 0; column < 5; column += 1) {
-    lines.push(Array.from({ length: 5 }, (_, row) => row * 5 + column));
-  }
-  lines.push([0, 6, 12, 18, 24], [4, 8, 12, 16, 20]);
-  return lines.filter((line) => line.every((index) => checked.has(index)));
-};
 
 function App({ initialLocale }: AppProps) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
@@ -98,6 +96,7 @@ function App({ initialLocale }: AppProps) {
   const activeGrid =
     grids.find((storedGrid) => storedGrid.id === activeId) ?? grids[0];
   const bingo = activeGrid.bingo;
+  const { rows, columns } = gridDimensions(bingo);
 
   useEffect(() => {
     const favicon = document.head.querySelector(
@@ -128,7 +127,7 @@ function App({ initialLocale }: AppProps) {
   const checkedVisibleCellCount = [...checked].filter((index) =>
     isCellFilled(bingo.cells[index]),
   ).length;
-  const wins = winningLines(checked);
+  const wins = winningLines(checked, rows, columns);
   const winningCells = new Set(wins.flat());
 
   const setBingo = (value: SetStateAction<BingoData>) => {
@@ -142,10 +141,10 @@ function App({ initialLocale }: AppProps) {
         void createGridPreviewDataUrl(nextBingo).then((preview) => {
           setGrids((latest) =>
             latest.map((grid) =>
-              grid.id === activeId
+              grid.id === activeId && grid.bingo === nextBingo
                 ? {
                     ...grid,
-                    bingo: cloneBingo(nextBingo),
+                    bingo: nextBingo,
                     preview: preview || nextPreview || "",
                     updatedAt: new Date().toISOString(),
                   }
@@ -155,7 +154,7 @@ function App({ initialLocale }: AppProps) {
         });
         return {
           ...storedGrid,
-          bingo: cloneBingo(nextBingo),
+          bingo: nextBingo,
           preview: nextPreview,
           updatedAt: new Date().toISOString(),
         };
@@ -518,7 +517,7 @@ function App({ initialLocale }: AppProps) {
   const performClearCells = () => {
     setBingo((current) => ({
       ...current,
-      cells: emptyBingo(locale).cells,
+      cells: current.cells.map(() => ({ text: "", image: "" })),
     }));
   };
 
@@ -568,21 +567,69 @@ function App({ initialLocale }: AppProps) {
     setNotice(t.gridDeleted);
   };
 
+  const applySize = (nextRows: number, nextColumns: number) => {
+    setBingo((current) => resizeBingo(current, nextRows, nextColumns));
+    setChecked(
+      new Set(
+        [...checked]
+          .filter(
+            (index) =>
+              Math.floor(index / columns) < nextRows &&
+              index % columns < nextColumns,
+          )
+          .map(
+            (index) =>
+              Math.floor(index / columns) * nextColumns + (index % columns),
+          ),
+      ),
+    );
+  };
+
+  const requestSize = (nextRows: number, nextColumns: number) => {
+    if (nextRows === rows && nextColumns === columns) return;
+    const removed = bingo.cells.filter(
+      (cell, index) =>
+        isCellFilled(cell) &&
+        (Math.floor(index / columns) >= nextRows ||
+          index % columns >= nextColumns),
+    ).length;
+    if (removed)
+      setConfirmation({
+        kind: "resize",
+        rows: nextRows,
+        columns: nextColumns,
+        removed,
+      });
+    else applySize(nextRows, nextColumns);
+  };
+
   const confirmAction = () => {
     if (!confirmation) return;
     if (confirmation.kind === "clear") performClearCells();
+    else if (confirmation.kind === "resize")
+      applySize(confirmation.rows, confirmation.columns);
     else performDeleteGrid(confirmation.grid);
     setConfirmation(null);
   };
 
   const confirmationTitle =
-    confirmation?.kind === "clear" ? t.clearCells : t.deleteGrid;
+    confirmation?.kind === "resize"
+      ? t.resizeGrid
+      : confirmation?.kind === "clear"
+        ? t.clearCells
+        : t.deleteGrid;
   const confirmationMessage =
-    confirmation?.kind === "clear"
-      ? t.confirmClearCells
-      : confirmation
-        ? t.confirmDelete(confirmation.grid.bingo.title || t.untitledGrid)
-        : "";
+    confirmation?.kind === "resize"
+      ? t.confirmResize(
+          confirmation.removed,
+          confirmation.rows,
+          confirmation.columns,
+        )
+      : confirmation?.kind === "clear"
+        ? t.confirmClearCells
+        : confirmation
+          ? t.confirmDelete(confirmation.grid.bingo.title || t.untitledGrid)
+          : "";
 
   const formatUpdatedAt = (value: string) =>
     new Intl.DateTimeFormat(locale, {
@@ -704,6 +751,33 @@ function App({ initialLocale }: AppProps) {
               />
             </label>
 
+            <div className="grid-size-picker">
+              <h3>{t.gridSize}</h3>
+              {(["rows", "columns"] as const).map((dimension) => (
+                <fieldset key={dimension}>
+                  <legend>{t[dimension]}</legend>
+                  <div>
+                    {[2, 3, 4, 5].map((value) => (
+                      <button
+                        type="button"
+                        key={value}
+                        aria-pressed={
+                          (dimension === "rows" ? rows : columns) === value
+                        }
+                        onClick={() =>
+                          requestSize(
+                            dimension === "rows" ? value : rows,
+                            dimension === "columns" ? value : columns,
+                          )
+                        }
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
             <fieldset className="theme-picker">
               <legend>{t.mood}</legend>
               <div>
@@ -835,6 +909,10 @@ function App({ initialLocale }: AppProps) {
               </div>
 
               <div
+                style={{
+                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+                }}
                 className={`bingo-grid ${mode === "edit" ? "is-editing" : "is-playing"}`}
               >
                 {bingo.cells.map((cell, index) =>
@@ -919,7 +997,7 @@ function App({ initialLocale }: AppProps) {
               <div className="poster-footer">
                 <span>
                   {mode === "edit"
-                    ? t.cellsFilled(filledCellCount)
+                    ? t.cellsFilled(filledCellCount, bingo.cells.length)
                     : t.announcementsChecked(
                         checkedVisibleCellCount,
                         filledCellCount,
@@ -1028,6 +1106,10 @@ function App({ initialLocale }: AppProps) {
                         ) : (
                           <span
                             className="library-mini-grid"
+                            style={{
+                              gridTemplateColumns: `repeat(${gridDimensions(storedGrid.bingo).columns}, 1fr)`,
+                              gridTemplateRows: `repeat(${gridDimensions(storedGrid.bingo).rows}, 1fr)`,
+                            }}
                             aria-hidden="true"
                           >
                             {storedGrid.bingo.cells.map((cell, index) => (
@@ -1052,7 +1134,11 @@ function App({ initialLocale }: AppProps) {
                             {storedGrid.bingo.subtitle || t.noSubtitle}
                           </small>
                           <span className="library-meta">
-                            {t.filledCells(filledCells)} ·{" "}
+                            {t.filledCells(
+                              filledCells,
+                              storedGrid.bingo.cells.length,
+                            )}{" "}
+                            ·{" "}
                             {t.updatedAt(formatUpdatedAt(storedGrid.updatedAt))}
                           </span>
                         </span>

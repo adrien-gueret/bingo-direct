@@ -14,5 +14,7 @@ export type BingoData = {
   subtitle: string
   author: string
   theme: ThemeName
+  rows?: number
+  columns?: number
   cells: BingoCell[]
 }

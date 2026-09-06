@@ -676,13 +676,14 @@ main {
 
 .bingo-grid {
   display: grid;
+  aspect-ratio: 1;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: clamp(4px, 0.8vw, 9px);
 }
 
 .bingo-cell {
   min-width: 0;
-  aspect-ratio: 1;
+  min-height: 0;
   border: clamp(1px, 0.25vw, 3px) solid rgba(255, 255, 255, 0.55);
   border-radius: clamp(5px, 1vw, 11px);
   color: var(--grid-ink);
@@ -1662,3 +1663,12 @@ main {
     transition-duration: 0.01ms !important;
   }
 }
+
+.grid-size-picker { grid-column: 1 / -1; margin: 24px 0; }
+.grid-size-picker h3 { font-size: 14px; margin: 0 0 12px; }
+.grid-size-picker fieldset { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
+.grid-size-picker legend { font-size: 13px; margin-bottom: 6px; }
+.grid-size-picker fieldset > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.grid-size-picker button { min-height: 44px; border: 1px solid #ded8d5; border-radius: 8px; background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
+.grid-size-picker button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+.grid-size-picker p { font-size: 12px; color: #625a5b; }

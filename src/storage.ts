@@ -20,6 +20,9 @@ type LibraryState = {
   activeId: string;
 };
 
+const isDimension = (value: unknown) =>
+  value === undefined || (typeof value === "number" && Number.isInteger(value) && value >= 2 && value <= 5);
+
 const isBingoData = (value: unknown): value is BingoData => {
   if (!value || typeof value !== "object") return false;
   const bingo = value as Partial<BingoData>;
@@ -33,7 +36,9 @@ const isBingoData = (value: unknown): value is BingoData => {
     bingo.author.length <= 28 &&
     isThemeName(bingo.theme) &&
     Array.isArray(bingo.cells) &&
-    bingo.cells.length === 25 &&
+    isDimension(bingo.rows) &&
+    isDimension(bingo.columns) &&
+    bingo.cells.length === (bingo.rows ?? 5) * (bingo.columns ?? 5) &&
     bingo.cells.every(
       (cell) =>
         cell &&

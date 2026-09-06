@@ -1,3 +1,4 @@
+import { gridDimensions } from "./data";
 import type { BingoData, Locale } from "./types";
 import { themeDefinitions, type ThemeDefinition } from "./themes";
 
@@ -175,7 +176,9 @@ export const createGridPreviewDataUrl = async (bingo: BingoData) => {
     const size = 420;
     const padding = 16;
     const gap = 6;
-    const cellSize = (size - padding * 2 - gap * 4) / 5;
+    const { rows, columns } = gridDimensions(bingo);
+    const cellWidth = (size - padding * 2 - gap * (columns - 1)) / columns;
+    const cellHeight = (size - padding * 2 - gap * (rows - 1)) / rows;
     canvas.width = size;
     canvas.height = size;
 
@@ -194,26 +197,27 @@ export const createGridPreviewDataUrl = async (bingo: BingoData) => {
     );
 
     bingo.cells.forEach((cell, index) => {
-      const column = index % 5;
-      const row = Math.floor(index / 5);
-      const x = padding + column * (cellSize + gap);
-      const y = padding + row * (cellSize + gap);
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      const x = padding + column * (cellWidth + gap);
+      const y = padding + row * (cellHeight + gap);
       const hasText = Boolean(cell.text.trim());
 
       context.fillStyle = "#ffffff";
-      roundRect(context, x, y, cellSize, cellSize, 10);
+      roundRect(context, x, y, cellWidth, cellHeight, 10);
       context.fill();
 
       if (cellImages[index]) {
         const image = cellImages[index] as HTMLImageElement;
         const imagePadding = 3;
-        const imageSize = cellSize - imagePadding * 2;
+        const imageWidth = cellWidth - imagePadding * 2;
+        const imageHeight = cellHeight - imagePadding * 2;
         const imageX = x + imagePadding;
         const imageY = y + imagePadding;
-        roundRect(context, imageX, imageY, imageSize, imageSize, 8);
+        roundRect(context, imageX, imageY, imageWidth, imageHeight, 8);
         context.save();
         context.clip();
-        drawImageCover(context, image, imageX, imageY, imageSize, imageSize);
+        drawImageCover(context, image, imageX, imageY, imageWidth, imageHeight);
         context.restore();
       }
 
@@ -225,12 +229,12 @@ export const createGridPreviewDataUrl = async (bingo: BingoData) => {
         const safeText = cell.text.trim();
         const text =
           safeText.length > 18 ? `${safeText.slice(0, 17)}…` : safeText;
-        context.fillText(text, x + cellSize / 2, y + cellSize / 2);
+        context.fillText(text, x + cellWidth / 2, y + cellHeight / 2);
       }
 
       context.strokeStyle = "rgba(0,0,0,0.08)";
       context.lineWidth = 1;
-      roundRect(context, x, y, cellSize, cellSize, 10);
+      roundRect(context, x, y, cellWidth, cellHeight, 10);
       context.stroke();
     });
 
@@ -253,7 +257,10 @@ const createBingoImageFile = async (
   const headerHeight = 250;
   const gap = 16;
   const boardSize = size - padding * 2;
-  const cellSize = (boardSize - gap * 4) / 5;
+  const { rows, columns } = gridDimensions(bingo);
+  const cellWidth = (boardSize - gap * (columns - 1)) / columns;
+  const cellHeight = (boardSize - gap * (rows - 1)) / rows;
+  const cellSize = Math.min(cellWidth, cellHeight);
   const palette = themeDefinitions[bingo.theme];
   canvas.width = size;
   canvas.height = size + headerHeight - 30;
@@ -331,29 +338,29 @@ const createBingoImageFile = async (
 
   bingo.cells.forEach((cell, index) => {
     if (!cell.text.trim() && !cell.image) return;
-    const column = index % 5;
-    const row = Math.floor(index / 5);
-    const x = padding + column * (cellSize + gap);
-    const y = headerHeight + row * (cellSize + gap);
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = padding + column * (cellWidth + gap);
+    const y = headerHeight + row * (cellHeight + gap);
     const hasText = Boolean(cell.text.trim());
     const cellRadius = cellSize * 0.05;
     const cellBorder = cellSize * 0.012;
     const contentInset = cellSize * 0.055;
-    const contentWidth = cellSize - contentInset * 2;
-    const contentHeight = cellSize - contentInset * 2;
+    const contentWidth = cellWidth - contentInset * 2;
+    const contentHeight = cellHeight - contentInset * 2;
 
     context.fillStyle = checked.has(index) ? palette.accent : "#ffffff";
-    roundRect(context, x, y, cellSize, cellSize, cellRadius);
+    roundRect(context, x, y, cellWidth, cellHeight, cellRadius);
     context.fill();
 
     const image = cellImages[index];
     if (image) {
       const imageHeight = hasText
         ? contentHeight * 0.54
-        : cellSize - cellBorder * 2;
+        : cellHeight - cellBorder * 2;
       const imageX = hasText ? x + contentInset : x + cellBorder;
       const imageY = hasText ? y + contentInset : y + cellBorder;
-      const imageWidth = hasText ? contentWidth : cellSize - cellBorder * 2;
+      const imageWidth = hasText ? contentWidth : cellWidth - cellBorder * 2;
       context.save();
       roundRect(
         context,
@@ -387,7 +394,7 @@ const createBingoImageFile = async (
       lines.forEach((line, lineIndex) => {
         context.fillText(
           line,
-          x + cellSize / 2,
+          x + cellWidth / 2,
           startY + lineIndex * lineHeight,
         );
       });
@@ -397,21 +404,21 @@ const createBingoImageFile = async (
       ? "rgba(255, 255, 255, 0.92)"
       : "rgba(255, 255, 255, 0.55)";
     context.lineWidth = checked.has(index) ? cellSize * 0.03 : cellSize * 0.012;
-    roundRect(context, x, y, cellSize, cellSize, cellRadius);
+    roundRect(context, x, y, cellWidth, cellHeight, cellRadius);
     context.stroke();
 
     if (checked.has(index)) {
       context.fillStyle = palette.primary;
       context.beginPath();
-      context.arc(x + cellSize - 34, y + 34, 25, 0, Math.PI * 2);
+      context.arc(x + cellWidth - 34, y + 34, 25, 0, Math.PI * 2);
       context.fill();
       context.strokeStyle = "#ffffff";
       context.lineWidth = 6;
       context.lineCap = "round";
       context.beginPath();
-      context.moveTo(x + cellSize - 45, y + 34);
-      context.lineTo(x + cellSize - 36, y + 43);
-      context.lineTo(x + cellSize - 22, y + 25);
+      context.moveTo(x + cellWidth - 45, y + 34);
+      context.lineTo(x + cellWidth - 36, y + 43);
+      context.lineTo(x + cellWidth - 22, y + 25);
       context.stroke();
     }
   });
