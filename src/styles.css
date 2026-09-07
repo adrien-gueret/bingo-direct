@@ -771,6 +771,31 @@ main {
   border-radius: inherit;
 }
 
+.play-cell.has-image .cell-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.play-cell.has-image {
+  justify-content: flex-end;
+}
+
+.play-cell.has-image .cell-text {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 8px 8px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: center;
+}
+
 .play-cell.checked .cell-image {
   opacity: 0.78;
 }
@@ -1686,6 +1711,7 @@ main {
 .canonical-poster .play-cell { padding: 10px; gap: 6px; transition: none; }
 .canonical-poster .play-cell:hover { transform: none; }
 .canonical-poster .cell-image { height: 54%; min-height: 0; flex-shrink: 1; object-fit: cover; border-radius: 5px; }
+.canonical-poster .play-cell.has-image .cell-image { height: 100%; border-radius: inherit; }
 .canonical-poster .cell-text { font-size: 14px; font-weight: 700; line-height: 1.12; flex-shrink: 0; overflow-wrap: anywhere; white-space: normal; }
 .canonical-poster .image-only .cell-image { height: 100%; border-radius: inherit; }
 .canonical-poster .checkmark { top: 7px; right: 7px; width: 23px; height: 23px; font-size: 13px; transition: none; }

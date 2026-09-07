@@ -11,8 +11,7 @@ export const fitPosterText = (poster: HTMLElement) => {
   }
   for (const text of poster.querySelectorAll<HTMLElement>(".cell-text")) {
     const cell = text.parentElement!;
-    // Keep room for a small image when a particularly long caption needs it.
-    const available = cell.clientHeight - 20 - (cell.querySelector("img") ? 30 : 0);
+    const available = cell.clientHeight - 20;
     let size = 14;
     text.style.fontSize = `${size}px`;
     while (text.scrollHeight > available && size > 8) {
