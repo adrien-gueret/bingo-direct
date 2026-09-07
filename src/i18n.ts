@@ -4,6 +4,24 @@ const LOCALE_STORAGE_KEY = "direct-bingo-locale";
 
 export const messages = {
   fr: {
+    undo: "Annuler",
+    redo: "Rétablir",
+    historyLabel: "Historique de la grille",
+    closeCellEditor: "Fermer l’éditeur de case",
+    undoShortcut: "Annuler la dernière modification (Ctrl/Cmd + Z)",
+    redoShortcut: "Rétablir (Ctrl/Cmd + Maj + Z ou Ctrl + Y)",
+    undone: "Modification annulée",
+    redone: "Modification rétablie",
+    importFile: "Importer des grilles",
+    importingFile: "Import en cours…",
+    exportLibrary: "Exporter mes grilles",
+    fileExported: "Fichier téléchargé !",
+    fileExportFailed:
+      "Export impossible. Essaie d’exporter les grilles individuellement (50 Mo et 200 grilles maximum par fichier).",
+    fileImportFailed:
+      "Import impossible : fichier invalide, version non prise en charge ou limite dépassée (50 Mo, 200 grilles). Tes grilles sont conservées.",
+    gridsImported: (count: number) =>
+      `${count} grille${count > 1 ? "s importées" : " importée"}`,
     pageTitle: "Bingo Direct — Créez vos prédictions",
     metaDescription:
       "Créez, jouez et partagez votre grille de prédictions pour le prochain Direct.",
@@ -48,7 +66,7 @@ export const messages = {
     clearCells: "Vider les cases",
     clearCell: "Vider la cellule",
     confirmClearCells:
-      "Vider toutes les cellules de cette grille ? Cette action ne peut pas être annulée.",
+      "Vider toutes les cellules et les coches de cette grille ? Tu pourras annuler cette action pendant cette session.",
     cancel: "Annuler",
     inspiration: "Besoin d’inspiration ?",
     clickToAdd: "Clique pour ajouter",
@@ -56,6 +74,7 @@ export const messages = {
     displayMode: "Mode d’affichage",
     edit: "Éditer",
     play: "Cocher",
+    exitDirectMode: "Quitter",
     reset: "Réinitialiser",
     exportPng: "Exporter en PNG",
     by: "par",
@@ -80,7 +99,7 @@ export const messages = {
     cellsFilled: (count: number, total = 25) =>
       `${count}/${total} cases remplies`,
     announcementsChecked: (count: number, total: number) =>
-      `${count}/${total} ${total === 1 ? "annonce cochée" : "annonces cochées"}`,
+      `${count}/${total} ${total === 1 ? "prédiction cochée" : "prédictions cochées"}`,
     footerCredit: "Un outil par",
     footerFun: [
       "Fait avec beaucoup trop d'espoir derrière la tête.",
@@ -116,6 +135,24 @@ export const messages = {
       "Ces grilles sont enregistrées uniquement dans ce navigateur.",
   },
   en: {
+    undo: "Undo",
+    redo: "Redo",
+    historyLabel: "Grid history",
+    closeCellEditor: "Close cell editor",
+    undoShortcut: "Undo the last change (Ctrl/Cmd + Z)",
+    redoShortcut: "Redo (Ctrl/Cmd + Shift + Z or Ctrl + Y)",
+    undone: "Change undone",
+    redone: "Change redone",
+    importFile: "Import grids",
+    importingFile: "Importing…",
+    exportLibrary: "Export my grids",
+    fileExported: "File downloaded!",
+    fileExportFailed:
+      "Unable to export. Try exporting grids individually (up to 50 MB and 200 grids per file).",
+    fileImportFailed:
+      "Unable to import: invalid file, unsupported version or limit exceeded (50 MB, 200 grids). Your grids are unchanged.",
+    gridsImported: (count: number) =>
+      `${count} grid${count > 1 ? "s" : ""} imported`,
     pageTitle: "Bingo Direct — Create your predictions",
     metaDescription:
       "Create, play and share your prediction grid for the next Direct.",
@@ -160,7 +197,7 @@ export const messages = {
     clearCells: "Clear cells",
     clearCell: "Clear cell",
     confirmClearCells:
-      "Clear every cell in this grid? This action cannot be undone.",
+      "Clear every cell and checkmark in this grid? You can undo this during this session.",
     cancel: "Cancel",
     inspiration: "Need inspiration?",
     clickToAdd: "Click to add",
@@ -168,6 +205,7 @@ export const messages = {
     displayMode: "Display mode",
     edit: "Edit",
     play: "Check",
+    exitDirectMode: "Exit",
     reset: "Reset",
     exportPng: "Export as PNG",
     by: "by",
@@ -190,7 +228,7 @@ export const messages = {
     cellsFilled: (count: number, total = 25) =>
       `${count}/${total} cells filled`,
     announcementsChecked: (count: number, total: number) =>
-      `${count}/${total} ${total === 1 ? "announcement checked" : "announcements checked"}`,
+      `${count}/${total} ${total === 1 ? "prediction checked" : "predictions checked"}`,
     footerCredit: "A tool by",
     footerFun: [
       "Made with way too much hope behind the scenes.",

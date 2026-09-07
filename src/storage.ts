@@ -9,6 +9,7 @@ const LIBRARY_ID = "library";
 export type StoredBingo = {
   id: string;
   bingo: BingoData;
+  checked?: number[];
   preview?: string;
   createdAt: string;
   updatedAt: string;
@@ -23,7 +24,7 @@ type LibraryState = {
 const isDimension = (value: unknown) =>
   value === undefined || (typeof value === "number" && Number.isInteger(value) && value >= 2 && value <= 5);
 
-const isBingoData = (value: unknown): value is BingoData => {
+export const isBingoData = (value: unknown): value is BingoData => {
   if (!value || typeof value !== "object") return false;
   const bingo = value as Partial<BingoData>;
   return (
@@ -52,6 +53,13 @@ const isBingoData = (value: unknown): value is BingoData => {
   );
 };
 
+export const isChecked = (value: unknown, bingo: BingoData): value is number[] =>
+  Array.isArray(value) &&
+  value.length <= bingo.cells.length &&
+  new Set(value).size === value.length &&
+  value.every((index) => Number.isInteger(index) && index >= 0 && index < bingo.cells.length &&
+    Boolean(bingo.cells[index].text.trim() || bingo.cells[index].image));
+
 const isStoredBingo = (value: unknown): value is StoredBingo => {
   if (!value || typeof value !== "object") return false;
   const stored = value as Partial<StoredBingo>;
@@ -63,7 +71,8 @@ const isStoredBingo = (value: unknown): value is StoredBingo => {
     typeof stored.updatedAt === "string" &&
     Number.isFinite(Date.parse(stored.updatedAt)) &&
     (stored.preview === undefined || typeof stored.preview === "string") &&
-    isBingoData(stored.bingo)
+    isBingoData(stored.bingo) &&
+    (stored.checked === undefined || isChecked(stored.checked, stored.bingo))
   );
 };
 
@@ -118,6 +127,7 @@ export const createStoredBingo = (bingo: BingoData): StoredBingo => {
   return {
     id: createId(),
     bingo: structuredClone(bingo),
+    checked: [],
     preview: "",
     createdAt: now,
     updatedAt: now,
@@ -144,7 +154,7 @@ export const initializeLibrary = async (fallback: BingoData) => {
   return { grids: [firstGrid], activeId: firstGrid.id };
 };
 
-export const saveLibrary = async (
+const persistLibrary = async (
   grids: StoredBingo[],
   activeId: string,
 ): Promise<boolean> => {
@@ -162,4 +172,11 @@ export const saveLibrary = async (
   } catch {
     return false;
   }
+};
+
+// Keep writes in order even if several database opens resolve asynchronously.
+let pendingSave: Promise<boolean> = Promise.resolve(true);
+export const saveLibrary = (grids: StoredBingo[], activeId: string): Promise<boolean> => {
+  pendingSave = pendingSave.then(() => persistLibrary(grids, activeId));
+  return pendingSave;
 };

@@ -19,7 +19,7 @@ function load(name) {
   return module.exports;
 }
 
-const { createStarterBingo, gridDimensions, resizeBingo, winningLines } = load("data");
+const { createStarterBingo, gridDimensions, resizeBingo } = load("data");
 const { initializeLibrary } = load("storage");
 const legacy = createStarterBingo("fr");
 delete legacy.rows;
@@ -34,9 +34,6 @@ for (let rows = 2; rows <= 5; rows++) {
     const expanded = resizeBingo(resized, 5, 5);
     expanded.cells.forEach((cell, i) => assert.deepEqual(cell,
       Math.floor(i / 5) < rows && i % 5 < columns ? legacy.cells[i] : { text: "", image: "" }));
-    const all = new Set(resized.cells.map((_, i) => i));
-    assert.equal(winningLines(all, rows, columns).length, rows + columns + (rows === columns ? 2 : 0));
-    assert.deepEqual(winningLines(new Set([0, columns]), rows, columns), rows === 2 ? [[0, columns]] : []);
   }
 }
 assert.equal(legacy.cells.length, 25);
@@ -72,4 +69,4 @@ for (const invalid of [{ ...legacy, rows: 1 }, { ...legacy, columns: 6 }, { ...l
   persisted = { id: "library", activeId: "existing", grids: [stored(invalid)] };
   assert.notEqual((await initializeLibrary(createStarterBingo("en"))).activeId, "existing");
 }
-console.log("Passed: 16 layouts, cell/image preservation, expansion, winning lines, legacy and rectangular storage, invalid data rejection.");
+console.log("Passed: 16 layouts, cell/image preservation, expansion, legacy and rectangular storage, invalid data rejection.");

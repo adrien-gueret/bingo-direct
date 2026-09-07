@@ -1,6 +1,6 @@
 import { fitPosterText } from "./poster-layout";
 import { useLayoutEffect, useRef, useState, type DragEvent, type RefObject } from "react";
-import { gridDimensions, winningLines } from "./data";
+import { gridDimensions } from "./data";
 import { messages } from "./i18n";
 import { getThemeStyle } from "./themes";
 import type { BingoCell, BingoData, Locale } from "./types";
@@ -38,8 +38,6 @@ export function BingoPoster({ bingo, locale, checked, mode = "play", controls }:
     (POSTER_GRID_SIZE - (columns - 1) * POSTER_GRID_GAP) / columns,
     (POSTER_GRID_SIZE - (rows - 1) * POSTER_GRID_GAP) / rows,
   );
-  const wins = winningLines(checked, rows, columns);
-  const winningCells = new Set(wins.flat());
   return (
     <div ref={posterRef} className="bingo-poster canonical-poster" style={getThemeStyle(bingo.theme)}>
       <div className="poster-header">
@@ -120,7 +118,7 @@ export function BingoPoster({ bingo, locale, checked, mode = "play", controls }:
           ) : (
             <button
               tabIndex={controls ? 0 : -1}
-              className={`bingo-cell play-cell ${cell.image ? "has-image" : ""} ${cell.image && !cell.text ? "image-only" : ""} ${checked.has(index) ? "checked" : ""} ${winningCells.has(index) ? "winner" : ""}`}
+              className={`bingo-cell play-cell ${cell.image ? "has-image" : ""} ${cell.image && !cell.text ? "image-only" : ""} ${checked.has(index) ? "checked" : ""}`}
               key={index}
               type="button"
               onClick={() => controls?.toggleCell(index)}
@@ -142,11 +140,6 @@ export function BingoPoster({ bingo, locale, checked, mode = "play", controls }:
       </div>
 
       <div className="poster-footer">
-        {wins.length > 0 && (
-          <span className="bingo-alert visible">
-            {`BINGO × ${wins.length} !`}
-          </span>
-        )}
         <span className="poster-brand">
           <strong>Bingo Direct</strong>
           <span>{SITE_URL}</span>

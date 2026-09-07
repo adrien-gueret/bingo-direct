@@ -1,15 +1,18 @@
 # Bingo Direct
 
-Créez, jouez et partagez en image une grille de 25 prédictions pour le prochain Nintendo Direct. Le projet est une application entièrement statique construite avec React, TypeScript et Vite.
+Créez, jouez et partagez une grille de prédictions pour le prochain Nintendo Direct. Le projet est une application entièrement statique construite avec React, TypeScript et Vite.
 
 ## Fonctionnalités
 
-- éditeur de grille 5×5 avec texte, image, ou les deux ;
-- quatre thèmes visuels ;
-- suggestions et remplissage aléatoire ;
-- mode jeu avec détection des lignes de bingo ;
+- éditeur de grille de 2 à 5 lignes et colonnes avec texte, image, ou les deux ;
+- huit thèmes visuels ;
+- suggestions aléatoires ;
+- mode jeu avec progression sauvegardée par grille ;
+- mode Direct plein écran activé par « Cocher », avec progression, partage et export PNG ;
 - bibliothèque de grilles enregistrée automatiquement dans le navigateur ;
 - création, ouverture, modification, duplication et suppression des grilles ;
+- annuler/rétablir les modifications de chaque grille pendant la session ;
+- export/import de grilles modifiables et sauvegarde de la bibliothèque en JSON ;
 - partage natif de l’image PNG sur les appareils compatibles ;
 - téléchargement PNG automatique lorsque le partage de fichiers n’est pas disponible ;
 - mise en page responsive ;
@@ -19,7 +22,7 @@ Les grilles ne quittent jamais automatiquement le navigateur. Seule l’image es
 
 ## Stockage local
 
-La bibliothèque, la grille active, les images et toutes les modifications sont conservées dans IndexedDB. Les images importées sont redimensionnées, converties dans un format web adapté et compressées dans le navigateur avant d’être enregistrées. Ces données restent liées au navigateur et à l’appareil utilisés : vider les données du site les supprime.
+La bibliothèque, la grille active, les images et les cases cochées sont conservées dans IndexedDB. Les anciennes grilles restent compatibles et démarrent sans cases cochées. Dupliquer une grille crée une nouvelle partie sans coches. Les images importées sont redimensionnées, converties dans un format web adapté et compressées dans le navigateur avant d’être enregistrées. Ces données restent liées au navigateur et à l’appareil utilisés : vider les données du site les supprime.
 
 Seule la préférence de langue, qui ne représente que quelques caractères, reste dans `localStorage`. Si IndexedDB est indisponible ou si son quota est atteint, l’application le signale au lieu de prétendre que la sauvegarde a réussi.
 
@@ -36,6 +39,7 @@ Vérifier puis construire la version de production :
 
 ```bash
 yarn lint
+yarn test
 yarn build
 ```
 
@@ -61,9 +65,17 @@ Créer aussi la variable facultative `FTP_SERVER_DIR` avec le dossier distant, p
 
 Le build conserve `base: './'`, il peut donc être publié à la racine ou dans un sous-dossier.
 
-## Limite volontaire du MVP
+## Grilles modifiables et sauvegardes
 
-Une image partagée ne peut pas être rouverte comme grille interactive sur un autre appareil et la bibliothèque n’est pas synchronisée entre appareils. Un export/import JSON pourra être ajouté ultérieurement si ce besoin apparaît, sans nécessiter de backend.
+Dans **Mes grilles**, **Exporter mes grilles** exporte toute la bibliothèque dans un fichier `.json` et **Importer des grilles** ouvre une sauvegarde. Les textes, images, dimensions, thèmes et coches sont inclus.
+
+L’import valide entièrement le fichier puis ajoute de nouvelles copies avec des identifiants distincts, sans remplacer les grilles existantes. Les fichiers sont limités à 50 Mo et 200 grilles ; au-delà, exporter les grilles individuellement. Le format porte un identifiant `bingo-direct` et une version `1`. La bibliothèque ne se synchronise pas automatiquement entre appareils ; transférer le fichier suffit pour la retrouver ailleurs. Une image PNG reste un partage visuel, sans données de grille modifiable.
+
+## Annuler et rétablir
+
+Les boutons **Annuler** et **Rétablir** couvrent les textes, images, thèmes, déplacements et dimensions. Les coches appartiennent à la progression de jeu : elles ne créent pas d’étape d’historique et ne sont pas modifiées par ces boutons. L’historique conserve jusqu’à 50 étapes par grille en mémoire, avec regroupement de la saisie rapprochée. Il reste disponible quand on change de grille, et disparaît au rechargement. Une nouvelle modification de la grille efface les étapes à rétablir. La création, la suppression et l’import de grilles ne font pas partie de cet historique.
+
+Raccourcis : `Ctrl/Cmd + Z` pour annuler, `Ctrl/Cmd + Maj + Z` ou `Ctrl + Y` pour rétablir. Dans un champ de texte, les raccourcis natifs du navigateur sont conservés ; les boutons agissent sur l’historique de la grille.
 
 Ce projet de fans n’est pas affilié à Nintendo.
 
@@ -80,7 +92,7 @@ d??dition. Les images et polices sont charg?es avant la capture. Le PNG reste
 limit? ? 1400 ? 1620 pixels ind?pendamment du pixel ratio du t?l?phone.
 Le partage natif conserve le t?l?chargement comme solution de secours.
 
-Tests de r?gression : `node tests/grid.test.mjs` et `node tests/poster.test.mjs`.
+Tests de régression : `npm test` (grilles, rendu du poster, progression, sauvegardes ordonnées, import/export et historique).
 Ils v?rifient les donn?es et le contenu rendu, pas la rasterisation navigateur.
 Avant mise en production, comparer l?aper?u et le PNG sur desktop et mobile
 (Chrome/Android et Safari/iOS), notamment les l?gendes longues avec image,

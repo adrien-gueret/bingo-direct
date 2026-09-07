@@ -68,7 +68,6 @@ const suggestionTexts: Record<Locale, string[]> = {
     "WARIO LAND !!!",
   ],
 };
-
 export const getSuggestions = (locale: Locale): BingoCell[] =>
   suggestionTexts[locale].map((text) => ({ text, image: "" }));
 
@@ -142,27 +141,4 @@ export const resizeBingo = (
         : { text: "", image: "" };
     }),
   };
-};
-
-export const winningLines = (
-  checked: Set<number>,
-  rows: number,
-  columns: number,
-) => {
-  const lines: number[][] = [];
-  for (let row = 0; row < rows; row += 1)
-    lines.push(
-      Array.from({ length: columns }, (_, column) => row * columns + column),
-    );
-  for (let column = 0; column < columns; column += 1)
-    lines.push(
-      Array.from({ length: rows }, (_, row) => row * columns + column),
-    );
-  if (rows === columns) {
-    lines.push(Array.from({ length: rows }, (_, i) => i * columns + i));
-    lines.push(
-      Array.from({ length: rows }, (_, i) => i * columns + columns - 1 - i),
-    );
-  }
-  return lines.filter((line) => line.every((index) => checked.has(index)));
 };

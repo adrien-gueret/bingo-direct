@@ -29,6 +29,8 @@ import {
 } from "./storage";
 import { getThemeStyle, themeDefinitions, themeNames } from "./themes";
 import type { BingoCell, BingoData, Locale } from "./types";
+import { useGridLibrary } from "./use-grid-library";
+import { downloadGrids, MAX_IMPORT_BYTES, parseGrids } from "./grid-transfer";
 
 type Mode = "edit" | "play";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -71,11 +73,13 @@ function App({ initialLocale }: AppProps) {
   const [initialGrid] = useState(() =>
     createStoredBingo(createStarterBingo(initialLocale)),
   );
-  const [grids, setGrids] = useState<StoredBingo[]>([initialGrid]);
+  const { grids, setGrids, histories, updateGrid, travel } = useGridLibrary(initialGrid);
   const [activeId, setActiveId] = useState(initialGrid.id);
   const [isLibraryReady, setIsLibraryReady] = useState(false);
   const [mode, setMode] = useState<Mode>("edit");
-  const [checked, setChecked] = useState<Set<number>>(() => new Set());
+  const [isDirectMode, setIsDirectMode] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -92,12 +96,26 @@ function App({ initialLocale }: AppProps) {
   const confirmationCancelRef = useRef<HTMLButtonElement>(null);
   const cellEditorDialogRef = useRef<HTMLElement>(null);
   const cellEditorCloseRef = useRef<HTMLButtonElement>(null);
+  const directDialogRef = useRef<HTMLDivElement>(null);
+  const directExitRef = useRef<HTMLButtonElement>(null);
+  const playModeTriggerRef = useRef<HTMLButtonElement>(null);
   const cellTriggerRefs = useRef(new Map<number, HTMLButtonElement>());
   const didDropCellRef = useRef(false);
   const activeGrid =
     grids.find((storedGrid) => storedGrid.id === activeId) ?? grids[0];
   const bingo = activeGrid.bingo;
+  const checked = new Set(activeGrid.checked ?? []);
+  const canUndo = Boolean(histories[activeId]?.past.length);
+  const canRedo = Boolean(histories[activeId]?.future.length);
   const { rows, columns } = gridDimensions(bingo);
+  const filledCellCount = bingo.cells.filter(isCellFilled).length;
+  const directProgress = filledCellCount
+    ? Math.round((checked.size / filledCellCount) * 100)
+    : 0;
+  const exitDirectMode = () => {
+    setIsDirectMode(false);
+    setMode("edit");
+  };
 
   useEffect(() => {
     const favicon = document.head.querySelector(
@@ -124,23 +142,43 @@ function App({ initialLocale }: AppProps) {
       document.head.appendChild(nextThemeColor);
     }
   }, [bingo.theme]);
-  const filledCellCount = bingo.cells.filter(isCellFilled).length;
-  const setBingo = (value: SetStateAction<BingoData>) => {
-    setSaveStatus("saving");
-    setGrids((current) =>
-      current.map((storedGrid) => {
-        if (storedGrid.id !== activeId) return storedGrid;
-        const nextBingo =
-          typeof value === "function" ? value(storedGrid.bingo) : value;
-        return {
-          ...storedGrid,
-          bingo: nextBingo,
-          preview: "",
-          updatedAt: new Date().toISOString(),
-        };
-      }),
-    );
+  const setBingo = (value: SetStateAction<BingoData>, group?: string) => {
+    updateGrid(activeId, (grid) => ({ ...grid,
+      bingo: typeof value === "function" ? value(grid.bingo) : value,
+    }), group);
   };
+  const setChecked = (value: SetStateAction<Set<number>>) => {
+    setSaveStatus("saving");
+    updateGrid(activeId, (grid) => ({ ...grid,
+      checked: [...(typeof value === "function" ? value(new Set(grid.checked ?? [])) : value)],
+    }));
+  };
+  const moveHistory = (direction: "undo" | "redo") => {
+    if (isImageImporting || confirmation || (direction === "undo" ? !canUndo : !canRedo)) return;
+    const steps = direction === "undo" ? histories[activeId].past : histories[activeId].future;
+    const destination = steps[steps.length - 1];
+    if (editingCellIndex !== null && editingCellIndex >= destination.bingo.cells.length) setEditingCellIndex(null);
+    travel(activeId, direction);
+    setSaveStatus("saving");
+    setNotice(direction === "undo" ? t.undone : t.redone);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      // Preserve native text undo while editing a field.
+      if (target?.closest('input, textarea, select, [contenteditable="true"]') ||
+          isLibraryOpen || confirmation || isImageImporting || event.altKey ||
+          !(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      const direction = key === "z" ? (event.shiftKey ? "redo" : "undo") : key === "y" ? "redo" : null;
+      if (!direction) return;
+      event.preventDefault();
+      moveHistory(direction);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -195,21 +233,19 @@ function App({ initialLocale }: AppProps) {
     if (!isLibraryReady) return;
     let isCancelled = false;
     let idleTimeout: number | undefined;
-    const saveTimeout = window.setTimeout(async () => {
+    setSaveStatus("saving");
+    void (async () => {
       const wasSaved = await saveLibrary(grids, activeId);
       if (isCancelled) return;
       if (!wasSaved) {
         setSaveStatus("error");
         return;
       }
-      if (saveStatus === "saving") {
-        setSaveStatus("saved");
-        idleTimeout = window.setTimeout(() => setSaveStatus("idle"), 1500);
-      }
-    }, 250);
+      setSaveStatus("saved");
+      idleTimeout = window.setTimeout(() => setSaveStatus("idle"), 1500);
+    })();
     return () => {
       isCancelled = true;
-      window.clearTimeout(saveTimeout);
       if (idleTimeout) window.clearTimeout(idleTimeout);
     };
   }, [activeId, grids, isLibraryReady]);
@@ -227,6 +263,42 @@ function App({ initialLocale }: AppProps) {
     const timeout = window.setTimeout(() => setNotice(""), 2600);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => {
+    if (!isDirectMode) return;
+    directExitRef.current?.focus();
+    document.body.classList.add("modal-open");
+    const handleDirectKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        exitDirectMode();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...(directDialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ) ?? [])].filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleDirectKeyboard);
+    return () => {
+      document.body.classList.remove("modal-open");
+      window.removeEventListener("keydown", handleDirectKeyboard);
+      playModeTriggerRef.current?.focus();
+    };
+  }, [isDirectMode]);
+
+  useEffect(() => {
+    setIsDirectMode(false);
+  }, [activeId]);
 
   useEffect(() => {
     if (!isLibraryOpen || confirmation || editingCellIndex !== null) return;
@@ -356,7 +428,7 @@ function App({ initialLocale }: AppProps) {
     key: K,
     value: BingoData[K],
   ) => {
-    setBingo((current) => ({ ...current, [key]: value }));
+    setBingo((current) => ({ ...current, [key]: value }), typeof value === "string" && key !== "theme" ? `meta:${key}` : undefined);
   };
 
   const updateCell = (index: number, patch: Partial<BingoCell>) => {
@@ -365,7 +437,7 @@ function App({ initialLocale }: AppProps) {
       cells: current.cells.map((cell, cellIndex) =>
         cellIndex === index ? { ...cell, ...patch } : cell,
       ),
-    }));
+    }), Object.keys(patch).length === 1 && patch.text !== undefined ? `cell:${index}:text` : undefined);
   };
 
   const importCellImage = async (imagePromise: Promise<string>) => {
@@ -395,12 +467,10 @@ function App({ initialLocale }: AppProps) {
   };
 
   const toggleCell = (index: number) => {
-    setChecked((current) => {
-      const next = new Set(current);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+    const next = new Set(checked);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    setChecked(next);
   };
 
   const startCellDrag = (
@@ -434,23 +504,21 @@ function App({ initialLocale }: AppProps) {
 
     didDropCellRef.current = true;
     if (sourceIndex !== targetIndex) {
-      setBingo((current) => {
-        const cells = [...current.cells];
+      setSaveStatus("saving");
+      updateGrid(activeId, (grid) => {
+        const cells = [...grid.bingo.cells];
         [cells[sourceIndex], cells[targetIndex]] = [
           cells[targetIndex],
           cells[sourceIndex],
         ];
-        return { ...current, cells };
-      });
-      setChecked((current) => {
-        const next = new Set(current);
+        const next = new Set(grid.checked ?? []);
         const sourceIsChecked = next.has(sourceIndex);
         const targetIsChecked = next.has(targetIndex);
         if (sourceIsChecked) next.add(targetIndex);
         else next.delete(targetIndex);
         if (targetIsChecked) next.add(sourceIndex);
         else next.delete(sourceIndex);
-        return next;
+        return { ...grid, bingo: { ...grid.bingo, cells }, checked: [...next] };
       });
     }
     setDraggedCellIndex(null);
@@ -496,7 +564,6 @@ function App({ initialLocale }: AppProps) {
     const newGrid = createStoredBingo(emptyBingo(locale));
     setGrids((current) => [newGrid, ...current]);
     setActiveId(newGrid.id);
-    setChecked(new Set());
     setMode("edit");
     setIsLibraryOpen(false);
     setNotice(t.gridCreated);
@@ -504,7 +571,6 @@ function App({ initialLocale }: AppProps) {
 
   const openGrid = (storedGrid: StoredBingo) => {
     setActiveId(storedGrid.id);
-    setChecked(new Set());
     setMode("edit");
     setIsLibraryOpen(false);
   };
@@ -518,7 +584,6 @@ function App({ initialLocale }: AppProps) {
     });
     setGrids((current) => [duplicate, ...current]);
     setActiveId(duplicate.id);
-    setChecked(new Set());
     setMode("edit");
     setIsLibraryOpen(false);
     setNotice(t.gridDuplicated);
@@ -530,17 +595,16 @@ function App({ initialLocale }: AppProps) {
     setGrids(remaining);
     if (storedGrid.id === activeId) {
       setActiveId(remaining[0].id);
-      setChecked(new Set());
       setMode("edit");
     }
     setNotice(t.gridDeleted);
   };
 
   const applySize = (nextRows: number, nextColumns: number) => {
-    setBingo((current) => resizeBingo(current, nextRows, nextColumns));
-    setChecked(
-      new Set(
-        [...checked]
+    setSaveStatus("saving");
+    updateGrid(activeId, (grid) => ({
+      ...grid, bingo: resizeBingo(grid.bingo, nextRows, nextColumns),
+      checked: (grid.checked ?? [])
           .filter(
             (index) =>
               Math.floor(index / columns) < nextRows &&
@@ -550,8 +614,7 @@ function App({ initialLocale }: AppProps) {
             (index) =>
               Math.floor(index / columns) * nextColumns + (index % columns),
           ),
-      ),
-    );
+    }));
   };
 
   const requestSize = (nextRows: number, nextColumns: number) => {
@@ -614,6 +677,35 @@ function App({ initialLocale }: AppProps) {
     finally { setIsSharing(false); }
   };
 
+  const exportFile = (selected: StoredBingo[], name: string) => {
+    try {
+      downloadGrids(selected, name);
+      setNotice(t.fileExported);
+    } catch {
+      setNotice(t.fileExportFailed);
+    }
+  };
+
+  const importFile = async (file: File) => {
+    if (isImporting) return;
+    setIsImporting(true);
+    try {
+      if (file.size > MAX_IMPORT_BYTES) throw new Error("Import too large");
+      const imported = parseGrids(await file.text());
+      setGrids((current) => [...imported, ...current]);
+      setActiveId(imported[0].id);
+      setEditingCellIndex(null);
+      setConfirmation(null);
+      setMode("edit");
+      setIsLibraryOpen(false);
+      setNotice(t.gridsImported(imported.length));
+    } catch {
+      setNotice(t.fileImportFailed);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const share = async () => {
     if (isSharing) return;
     setIsSharing(true);
@@ -629,6 +721,11 @@ function App({ initialLocale }: AppProps) {
     }
   };
 
+  const enterDirectMode = () => {
+    setMode("play");
+    setIsDirectMode(true);
+  };
+
   if (!isLibraryReady) {
     return (
       <div className="app app-loading" role="status">
@@ -642,7 +739,7 @@ function App({ initialLocale }: AppProps) {
 
   return (
     <div className="app" style={getThemeStyle(bingo.theme)}>
-      <header className="topbar">
+      <header className="topbar" inert={isDirectMode}>
         <a
           className="brand"
           href={window.location.pathname}
@@ -688,7 +785,7 @@ function App({ initialLocale }: AppProps) {
         </nav>
       </header>
 
-      <main>
+      <main inert={isDirectMode}>
         <section className="hero">
           <h1>{t.heroTitle}</h1>
           <p>{t.heroSubtitle}</p>
@@ -818,9 +915,10 @@ function App({ initialLocale }: AppProps) {
                   {t.edit}
                 </button>
                 <button
+                  ref={playModeTriggerRef}
                   type="button"
                   className={mode === "play" ? "active" : ""}
-                  onClick={() => setMode("play")}
+                  onClick={enterDirectMode}
                 >
                   {t.play}
                 </button>
@@ -873,6 +971,16 @@ function App({ initialLocale }: AppProps) {
               </div>
             </div>
 
+            <div className="grid-tools">
+              <div className="history-actions" role="group" aria-label={t.historyLabel}>
+                <button type="button" disabled={!canUndo || isImageImporting} onClick={() => moveHistory("undo")} title={t.undoShortcut}>
+                  <span aria-hidden="true">↶</span> {t.undo}
+                </button>
+                <button type="button" disabled={!canRedo || isImageImporting} onClick={() => moveHistory("redo")} title={t.redoShortcut}>
+                  <span aria-hidden="true">↷</span> {t.redo}
+                </button>
+              </div>
+            </div>
             <ScaledPoster bingo={bingo} checked={checked} locale={locale} mode={mode}
               controls={{ cellTriggerRefs, draggedCellIndex, dropTargetIndex, handleCellClick,
                 startCellDrag, allowCellDrop, dropCell, endCellDrag, toggleCell }} />
@@ -880,7 +988,7 @@ function App({ initialLocale }: AppProps) {
         </div>
       </main>
 
-      <footer className="site-footer">
+      <footer className="site-footer" inert={isDirectMode}>
         <p>
           {t.footerCredit}{" "}
           <a
@@ -893,6 +1001,91 @@ function App({ initialLocale }: AppProps) {
         </p>
         <p>{footerFun}</p>
       </footer>
+
+      {isDirectMode && (
+        <div
+          ref={directDialogRef}
+          className="direct-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="direct-mode-title"
+          aria-describedby="direct-progress-label"
+        >
+          <header className="direct-toolbar">
+            <div className="direct-identity">
+              <strong id="direct-mode-title">
+                {bingo.title || t.untitledGrid}
+              </strong>
+            </div>
+
+            <div className="direct-progress">
+              <div id="direct-progress-label" aria-live="polite">
+                <strong>{t.announcementsChecked(checked.size, filledCellCount)}</strong>
+              </div>
+              <span className="direct-progress-track" aria-hidden="true">
+                <i style={{ width: `${directProgress}%` }} />
+              </span>
+            </div>
+
+            <div className="direct-actions">
+              {checked.size > 0 && (
+                <button type="button" onClick={() => setChecked(new Set())}>
+                  {t.reset}
+                </button>
+              )}
+              <button
+                className="direct-share"
+                type="button"
+                onClick={share}
+                disabled={isSharing}
+                aria-busy={isSharing}
+              >
+                <span aria-hidden="true">↗</span> {isSharing ? t.sharingImage : t.share}
+              </button>
+              <button
+                className="direct-png"
+                type="button"
+                onClick={download}
+                disabled={isSharing}
+                title={t.exportPng}
+              >
+                <span aria-hidden="true">↓</span> PNG
+              </button>
+              <button
+                ref={directExitRef}
+                className="direct-exit"
+                type="button"
+                onClick={exitDirectMode}
+              >
+                <span aria-hidden="true">×</span> {t.exitDirectMode}
+              </button>
+            </div>
+          </header>
+
+          <div className="direct-stage">
+            <div className="direct-poster-wrap">
+              <ScaledPoster
+                bingo={bingo}
+                checked={checked}
+                locale={locale}
+                mode="play"
+                controls={{
+                  cellTriggerRefs,
+                  draggedCellIndex,
+                  dropTargetIndex,
+                  handleCellClick,
+                  startCellDrag,
+                  allowCellDrop,
+                  dropCell,
+                  endCellDrag,
+                  toggleCell,
+                }}
+              />
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {isLibraryOpen && (
         <div
@@ -937,6 +1130,22 @@ function App({ initialLocale }: AppProps) {
               </button>
             </div>
 
+            <div className="library-transfer">
+              <div className="transfer-actions">
+                <button type="button" onClick={() => importInputRef.current?.click()} disabled={isImporting} aria-busy={isImporting}>
+                  {isImporting ? t.importingFile : t.importFile}
+                </button>
+                <button type="button" onClick={() => exportFile(grids, "bingo-direct-library")}>
+                  {t.exportLibrary}
+                </button>
+              </div>
+              <input ref={importInputRef} type="file" accept=".json,application/json" hidden aria-label={t.importFile}
+                tabIndex={-1} disabled={isImporting} onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void importFile(file);
+                }} />
+            </div>
             <ul className="library-list">
               {[...grids]
                 .sort((left, right) =>
@@ -1107,7 +1316,7 @@ function App({ initialLocale }: AppProps) {
                 type="button"
                 onClick={() => setEditingCellIndex(null)}
                 disabled={isImageImporting}
-                aria-label={t.cancel}
+                aria-label={t.closeCellEditor}
               >
                 ×
               </button>
@@ -1171,6 +1380,8 @@ function App({ initialLocale }: AppProps) {
             </label>
             <div className="cell-editor-actions">
               <div>
+                <button type="button" className="text-button" disabled={!canUndo || isImageImporting} onClick={() => moveHistory("undo")} title={t.undoShortcut}>{t.undo}</button>
+                <button type="button" className="text-button" disabled={!canRedo || isImageImporting} onClick={() => moveHistory("redo")} title={t.redoShortcut}>{t.redo}</button>
                 {bingo.cells[editingCellIndex].image && (
                   <button
                     className="text-button danger"

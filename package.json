@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test": "node tests/grid.test.mjs && node tests/poster.test.mjs && node tests/history-transfer.test.mjs",
     "dev": "vite --host",
     "build": "tsc && vite build",
     "preview": "vite preview",
