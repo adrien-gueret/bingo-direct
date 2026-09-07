@@ -1106,7 +1106,7 @@ main {
   margin-top: 19px;
 }
 
-.cell-editor-text > span {
+.cell-editor-text-label {
   display: block;
   margin-bottom: 6px;
   color: #766d6e;
@@ -1141,6 +1141,16 @@ main {
   font: inherit;
   font-size: 13px;
   line-height: 1.35;
+}
+
+.cell-editor-character-count {
+  display: block;
+  margin-top: 5px;
+  color: #91898a;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
 }
 
 .cell-editor-preview {
@@ -1712,7 +1722,7 @@ main {
 .canonical-poster .play-cell:hover { transform: none; }
 .canonical-poster .cell-image { height: 54%; min-height: 0; flex-shrink: 1; object-fit: cover; border-radius: 5px; }
 .canonical-poster .play-cell.has-image .cell-image { height: 100%; border-radius: inherit; }
-.canonical-poster .cell-text { font-size: 14px; font-weight: 700; line-height: 1.12; flex-shrink: 0; overflow-wrap: anywhere; white-space: normal; }
+.canonical-poster .cell-text { font-size: 14px; font-weight: 700; line-height: 1.12; flex-shrink: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .canonical-poster .image-only .cell-image { height: 100%; border-radius: inherit; }
 .canonical-poster .checkmark { top: 7px; right: 7px; width: 23px; height: 23px; font-size: 13px; transition: none; }
 .canonical-poster .play-cell.winner { animation: none; }

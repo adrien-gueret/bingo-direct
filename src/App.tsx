@@ -1113,17 +1113,24 @@ function App({ initialLocale }: AppProps) {
               </button>
             </header>
             <label className="cell-editor-text">
-              <span>
+              <span className="cell-editor-text-label">
                 {t.predictionCell(editingCellIndex + 1)} <em>{t.optional}</em>
               </span>
               <textarea
                 value={bingo.cells[editingCellIndex].text}
                 maxLength={70}
+                aria-describedby="cell-editor-character-count"
                 onChange={(event) =>
                   updateCell(editingCellIndex, { text: event.target.value })
                 }
                 placeholder={t.predictionPlaceholder}
               />
+              <span
+                className="cell-editor-character-count"
+                id="cell-editor-character-count"
+              >
+                {bingo.cells[editingCellIndex].text.length}/70
+              </span>
             </label>
             {bingo.cells[editingCellIndex].image && (
               <div className="cell-editor-preview">

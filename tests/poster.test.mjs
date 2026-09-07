@@ -24,7 +24,7 @@ const { createStarterBingo, resizeBingo } = load("data");
 const noop = () => {};
 const controls = { cellTriggerRefs: { current: new Map() }, draggedCellIndex: null, dropTargetIndex: null,
   handleCellClick: noop, startCellDrag: noop, allowCellDrop: noop, dropCell: noop, endCellDrag: noop, toggleCell: noop };
-const captions = ["Les fans sont remerci?s pour leur amour de la s?rie", "Un challenge Zelda sur le Nintendo Switch Online", "<script>alert(1)</script>", "W".repeat(70)];
+const captions = ["Les fans sont remerci?s\npour leur amour de la s?rie", "Un challenge Zelda sur le Nintendo Switch Online", "<script>alert(1)</script>", "W".repeat(70)];
 for (const locale of ["fr", "en"]) {
   for (let rows = 2; rows <= 5; rows++) for (let columns = 2; columns <= 5; columns++) {
     const bingo = resizeBingo(createStarterBingo(locale), rows, columns);
@@ -32,10 +32,11 @@ for (const locale of ["fr", "en"]) {
     const props = { bingo, locale, checked: new Set([0]) };
     const edit = renderToStaticMarkup(createElement(BingoPoster, { ...props, mode: "edit", controls }));
     const exported = renderToStaticMarkup(createElement(BingoPoster, props));
-    const texts = (html) => [...html.matchAll(/class="cell-text">(.*?)<\/span>/g)].map((match) => match[1]);
+    const texts = (html) => [...html.matchAll(/class="cell-text">([\s\S]*?)<\/span>/g)].map((match) => match[1]);
     assert.deepEqual(texts(edit), texts(exported));
     assert.equal(texts(exported).length, 4);
     assert.ok(texts(exported).includes(captions[0]));
+    assert.ok(exported.includes("remerci?s\npour"));
     assert.ok(texts(exported).includes(captions[1]));
     assert.ok(!exported.includes("<script>"));
     assert.equal((exported.match(/class="bingo-cell /g) || []).length, rows * columns);
