@@ -1,6 +1,7 @@
 import { ScaledPoster } from "./BingoPoster";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -9,7 +10,7 @@ import {
 import {
   createStarterBingo,
   emptyBingo,
-  getSuggestions,
+  getRandomSuggestions,
   gridDimensions,
   resizeBingo,
 } from "./data";
@@ -66,7 +67,7 @@ function App({ initialLocale }: AppProps) {
   const t = messages[locale];
   const [footerFunSeed] = useState(() => Math.random());
   const footerFun = t.footerFun[Math.floor(footerFunSeed * t.footerFun.length)];
-  const suggestions = getSuggestions(locale);
+  const suggestions = useMemo(() => getRandomSuggestions(locale), [locale]);
   const [initialGrid] = useState(() =>
     createStoredBingo(createStarterBingo(initialLocale)),
   );
@@ -789,7 +790,7 @@ function App({ initialLocale }: AppProps) {
                 <small>{t.clickToAdd}</small>
               </div>
               <div className="suggestion-list">
-                {suggestions.slice(25).map((suggestion) => (
+                {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.text}
                     type="button"
