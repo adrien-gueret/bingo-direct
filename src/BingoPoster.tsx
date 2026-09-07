@@ -6,6 +6,9 @@ import { getThemeStyle } from "./themes";
 import type { BingoCell, BingoData, Locale } from "./types";
 
 const isCellFilled = (cell: BingoCell) => Boolean(cell.text.trim() || cell.image);
+const SITE_URL = "mariouniversalis.fr/bingo-direct";
+const POSTER_GRID_SIZE = 736;
+const POSTER_GRID_GAP = 9;
 export type PosterControls = {
   cellTriggerRefs: RefObject<Map<number, HTMLButtonElement>>;
   draggedCellIndex: number | null;
@@ -31,8 +34,10 @@ export function BingoPoster({ bingo, locale, checked, mode = "play", controls }:
   }, [bingo]);
   const t = messages[locale];
   const { rows, columns } = gridDimensions(bingo);
-  const filledCellCount = bingo.cells.filter(isCellFilled).length;
-  const checkedVisibleCellCount = [...checked].filter((index) => bingo.cells[index] && isCellFilled(bingo.cells[index])).length;
+  const cellSize = Math.min(
+    (POSTER_GRID_SIZE - (columns - 1) * POSTER_GRID_GAP) / columns,
+    (POSTER_GRID_SIZE - (rows - 1) * POSTER_GRID_GAP) / rows,
+  );
   const wins = winningLines(checked, rows, columns);
   const winningCells = new Set(wins.flat());
   return (
@@ -51,8 +56,8 @@ export function BingoPoster({ bingo, locale, checked, mode = "play", controls }:
 
       <div
         style={{
-          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${columns}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
         }}
         className={`bingo-grid ${mode === "edit" ? "is-editing" : "is-playing"}`}
       >
@@ -137,20 +142,15 @@ export function BingoPoster({ bingo, locale, checked, mode = "play", controls }:
       </div>
 
       <div className="poster-footer">
-        <span>
-          {mode === "edit"
-            ? t.cellsFilled(filledCellCount, bingo.cells.length)
-            : t.announcementsChecked(
-                checkedVisibleCellCount,
-                filledCellCount,
-              )}
-        </span>
         {wins.length > 0 && (
           <span className="bingo-alert visible">
             {`BINGO × ${wins.length} !`}
           </span>
         )}
-        <span>Bingo Direct</span>
+        <span className="poster-brand">
+          <strong>Bingo Direct</strong>
+          <span>{SITE_URL}</span>
+        </span>
       </div>
     </div>
   );

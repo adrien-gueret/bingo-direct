@@ -1680,8 +1680,8 @@ main {
 .canonical-poster .poster-header > div { min-width: 0; flex: 1; }
 .canonical-poster .poster-header h2 { font-family: "Archivo Black", sans-serif; font-size: 38px; font-weight: 400; line-height: 1.04; letter-spacing: -1.5px; overflow-wrap: anywhere; }
 .canonical-poster .poster-header p { font-size: 13px; line-height: 1.2; margin: 8px 0 0; overflow-wrap: anywhere; }
-.canonical-poster .author-chip { font-size: 9px; max-width: 190px; padding: 7px 10px; overflow-wrap: anywhere; }
-.canonical-poster .bingo-grid { position: absolute; top: 144px; left: 32px; width: 736px; height: 736px; gap: 9px; }
+.canonical-poster .author-chip { max-width: 220px; padding: 9px 12px; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; text-align: right; }
+.canonical-poster .bingo-grid { position: absolute; top: 144px; left: 32px; display: grid; width: 736px; height: 736px; gap: 9px; justify-content: center; align-content: center; }
 .canonical-poster .bingo-cell { border-width: 2px; border-radius: 9px; box-shadow: 0 7px 18px rgba(55, 0, 5, 0.16); }
 .canonical-poster .play-cell { padding: 10px; gap: 6px; transition: none; }
 .canonical-poster .play-cell:hover { transform: none; }
@@ -1691,5 +1691,7 @@ main {
 .canonical-poster .checkmark { top: 7px; right: 7px; width: 23px; height: 23px; font-size: 13px; transition: none; }
 .canonical-poster .play-cell.winner { animation: none; }
 .canonical-poster .edit-empty-plus { font-size: 40px; }
-.canonical-poster .poster-footer { position: absolute; top: 895px; left: 32px; right: 32px; margin: 0; padding: 0; font-size: 9px; gap: 12px; }
+.canonical-poster .poster-footer { position: absolute; top: 891px; left: 32px; right: 32px; margin: 0; padding: 0; font-size: 9px; gap: 12px; }
+.canonical-poster .poster-brand { display: inline-flex; align-items: baseline; gap: 8px; margin-left: auto; white-space: nowrap; }
+.canonical-poster .poster-brand > span { font-size: 8px; font-weight: 500; letter-spacing: 0; text-transform: none; }
 .library-preview-image { object-fit: contain; }
