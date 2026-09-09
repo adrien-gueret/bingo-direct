@@ -19,8 +19,9 @@ function load(name) {
   cache.set(name, module.exports);
   return module.exports;
 }
-const { BingoPoster } = load("BingoPoster");
+const { BingoPoster, BingoCellPreview } = load("BingoPoster");
 const { createStarterBingo, resizeBingo } = load("data");
+const { imageOverflow, moveImagePosition } = load("image-position");
 const noop = () => {};
 const controls = { cellTriggerRefs: { current: new Map() }, draggedCellIndex: null, dropTargetIndex: null,
   handleCellClick: noop, startCellDrag: noop, allowCellDrop: noop, dropCell: noop, endCellDrag: noop, toggleCell: noop };
@@ -44,4 +45,44 @@ for (const locale of ["fr", "en"]) {
     assert.ok(!exported.includes("edit-empty-plus"));
   }
 }
-console.log("Passed: shared captions, images, checked cells, empty export cells and escaping across 16 layouts and both languages.");
+for (const imageFit of [undefined, "cover", "contain"]) {
+  for (const imageLayout of [undefined, "background", "above"]) {
+    for (const text of ["", " \n ", "Une belle surprise"]) {
+      const bingo = createStarterBingo("fr");
+      const cell = { text, image: "data:image/png;base64,AAAA", imageFit, imageLayout };
+      bingo.cells[0] = cell;
+      const props = { bingo, locale: "fr", checked: new Set() };
+      const versions = [
+        renderToStaticMarkup(createElement(BingoCellPreview, { ...props, cell })),
+        renderToStaticMarkup(createElement(BingoPoster, { ...props, mode: "edit", controls })),
+        renderToStaticMarkup(createElement(BingoPoster, props)),
+      ];
+      for (const html of versions) {
+        assert.ok(html.includes(`object-fit:${imageFit ?? "cover"}`));
+        assert.ok(html.includes("object-position:50% 50%"), "Existing images remain centered");
+        assert.equal(html.includes("image-above"), Boolean(text.trim() && imageLayout === "above"));
+        assert.equal(html.includes('class="cell-text"'), Boolean(text.trim()));
+      }
+      const imageTag = (html) => html.match(/<img[^>]+>/)?.[0];
+      assert.equal(imageTag(versions[0]), imageTag(versions[1]));
+      assert.equal(imageTag(versions[1]), imageTag(versions[2]));
+    }
+  }
+}
+for (const imageFit of ["cover", "contain"]) {
+  const bingo = createStarterBingo("fr");
+  bingo.cells[0] = { text: "Cadrage", image: "data:image/png;base64,AAAA", imageFit, imagePosition: { x: 20, y: 80 } };
+  const props = { bingo, locale: "fr", checked: new Set() };
+  for (const html of [renderToStaticMarkup(createElement(BingoPoster, props)), renderToStaticMarkup(createElement(BingoPoster, { ...props, mode: "edit", controls })), renderToStaticMarkup(createElement(BingoCellPreview, { ...props, cell: bingo.cells[0] }))]) {
+    assert.ok(html.includes(imageFit === "cover" ? "object-position:20% 80%" : "object-position:50% 50%"));
+  }
+}
+const center = { x: 50, y: 50 };
+assert.deepEqual(imageOverflow(400, 200, 100, 100), { x: 100, y: 0 });
+assert.deepEqual(imageOverflow(200, 400, 100, 100), { x: 0, y: 100 });
+assert.deepEqual(imageOverflow(0, 0, 100, 100), { x: 0, y: 0 });
+assert.deepEqual(moveImagePosition(center, 20, 40, { x: 100, y: 0 }), { x: 30, y: 50 }, "Drag follows the pointer and ignores uncropped axes");
+assert.deepEqual(moveImagePosition(center, 20, 40, { x: 0, y: 100 }), { x: 50, y: 10 });
+assert.deepEqual(moveImagePosition(center, 200, -200, { x: 100, y: 100 }), { x: 0, y: 100 }, "Movement never exposes empty space");
+assert.deepEqual(moveImagePosition(center, 10, 0, imageOverflow(400, 200, 50, 50)), moveImagePosition(center, 20, 0, imageOverflow(400, 200, 100, 100)), "Position is independent of preview scale");
+console.log("Passed: captions across 16 layouts and both languages; framing and positioning match in preview, grid and export; drag direction, bounds and scaling.");

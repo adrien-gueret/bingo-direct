@@ -1,4 +1,4 @@
-import { ScaledPoster } from "./BingoPoster";
+import { BingoCellPreview, ScaledPoster } from "./BingoPoster";
 import {
   useEffect,
   useMemo,
@@ -447,7 +447,7 @@ function App({ initialLocale }: AppProps) {
     setNotice(t.imageProcessing);
     try {
       const image = await imagePromise;
-      updateCell(target, { image });
+      updateCell(target, { image, imagePosition: undefined });
       setNotice(t.imageAdded);
     } catch {
       setNotice(t.imageLoadFailed);
@@ -462,7 +462,7 @@ function App({ initialLocale }: AppProps) {
 
   const clearEditingCell = () => {
     if (editingCellIndex === null) return;
-    updateCell(editingCellIndex, { text: "", image: "" });
+    updateCell(editingCellIndex, { text: "", image: "", imageLayout: undefined, imageFit: undefined, imagePosition: undefined });
     setEditingCellIndex(null);
   };
 
@@ -1341,11 +1341,6 @@ function App({ initialLocale }: AppProps) {
                 {bingo.cells[editingCellIndex].text.length}/70
               </span>
             </label>
-            {bingo.cells[editingCellIndex].image && (
-              <div className="cell-editor-preview">
-                <img src={bingo.cells[editingCellIndex].image} alt="" />
-              </div>
-            )}
             <p className="cell-editor-image-label">
               {t.imageLabel} <em>{t.optional}</em>
             </p>
@@ -1378,15 +1373,63 @@ function App({ initialLocale }: AppProps) {
               </strong>
               <span>{t.imageDropHint}</span>
             </label>
+            <div className={`cell-editor-image-settings ${bingo.cells[editingCellIndex].image ? "" : "preview-only"}`}>
+              <div className="cell-image-options">
+                {bingo.cells[editingCellIndex].image && (
+                  <>
+                    {bingo.cells[editingCellIndex].text.trim() && (
+                      <fieldset className="cell-image-layout" disabled={isImageImporting}>
+                        <legend>{t.imageLayout}</legend>
+                        <div>
+                          {(["background", "above"] as const).map((layout) => (
+                            <label key={layout}>
+                              <input
+                                type="radio"
+                                name="cell-image-layout"
+                                value={layout}
+                                checked={(bingo.cells[editingCellIndex].imageLayout ?? "background") === layout}
+                                onChange={() => updateCell(editingCellIndex, { imageLayout: layout })}
+                              />
+                              <span>{layout === "background" ? t.imageBackground : t.imageAbove}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    )}
+                    <fieldset className="cell-image-layout cell-image-fit" disabled={isImageImporting}>
+                      <legend>{t.imageFit}</legend>
+                      <div>
+                        {(["cover", "contain"] as const).map((fit) => (
+                          <label key={fit}>
+                            <input
+                              type="radio"
+                              name="cell-image-fit"
+                              value={fit}
+                              checked={(bingo.cells[editingCellIndex].imageFit ?? "cover") === fit}
+                              onChange={() => updateCell(editingCellIndex, { imageFit: fit })}
+                            />
+                            <span>
+                              {fit === "cover" ? t.imageCover : t.imageContain}
+                              <small>{fit === "cover" ? t.imageCoverHint : t.imageContainHint}</small>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  </>
+                )}
+              </div>
+              <BingoCellPreview key={editingCellIndex} bingo={bingo} cell={bingo.cells[editingCellIndex]} locale={locale}
+                disabled={isImageImporting}
+                onPositionChange={(imagePosition) => updateCell(editingCellIndex, { imagePosition })} />
+            </div>
             <div className="cell-editor-actions">
               <div>
-                <button type="button" className="text-button" disabled={!canUndo || isImageImporting} onClick={() => moveHistory("undo")} title={t.undoShortcut}>{t.undo}</button>
-                <button type="button" className="text-button" disabled={!canRedo || isImageImporting} onClick={() => moveHistory("redo")} title={t.redoShortcut}>{t.redo}</button>
                 {bingo.cells[editingCellIndex].image && (
                   <button
                     className="text-button danger"
                     type="button"
-                    onClick={() => updateCell(editingCellIndex, { image: "" })}
+                    onClick={() => updateCell(editingCellIndex, { image: "", imagePosition: undefined })}
                     disabled={isImageImporting}
                   >
                     {t.removeImage}

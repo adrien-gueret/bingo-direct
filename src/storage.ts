@@ -24,6 +24,13 @@ type LibraryState = {
 const isDimension = (value: unknown) =>
   value === undefined || (typeof value === "number" && Number.isInteger(value) && value >= 2 && value <= 5);
 
+const isImagePosition = (value: unknown) => {
+  if (value === undefined) return true;
+  if (!value || typeof value !== "object") return false;
+  const { x, y } = value as Record<string, unknown>;
+  return [x, y].every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 100);
+};
+
 export const isBingoData = (value: unknown): value is BingoData => {
   if (!value || typeof value !== "object") return false;
   const bingo = value as Partial<BingoData>;
@@ -47,6 +54,13 @@ export const isBingoData = (value: unknown): value is BingoData => {
         typeof cell.text === "string" &&
         cell.text.length <= 70 &&
         typeof cell.image === "string" &&
+        (cell.imageLayout === undefined ||
+          cell.imageLayout === "background" ||
+          cell.imageLayout === "above") &&
+        (cell.imageFit === undefined ||
+          cell.imageFit === "cover" ||
+          cell.imageFit === "contain") &&
+        isImagePosition(cell.imagePosition) &&
         (cell.image === "" ||
           /^data:image\/(?:webp|jpeg|png);base64,/.test(cell.image)),
     )

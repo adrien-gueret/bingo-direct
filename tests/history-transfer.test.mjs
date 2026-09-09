@@ -23,7 +23,8 @@ const { createStoredBingo, isChecked, saveLibrary, initializeLibrary } = load("s
 const { serializeGrids, parseGrids, MAX_IMPORT_BYTES } = load("grid-transfer");
 const { emptyHistory, recordEdit, travelHistory } = load("grid-history");
 const original = createStoredBingo(createStarterBingo("fr"));
-original.bingo.cells[0] = { text: "Mario !", image: "data:image/png;base64,AAAA" };
+original.bingo.cells[0] = { text: "Mario !", image: "data:image/png;base64,AAAA", imageLayout: "above", imageFit: "contain", imagePosition: { x: 10, y: 90 } };
+original.bingo.cells[1] = { text: "", image: "data:image/png;base64,AAAA", imageLayout: "background", imageFit: "cover" };
 original.bingo.cells[24] = { text: "Zelda", image: "" };
 original.checked = [0, 24];
 
@@ -36,8 +37,16 @@ const legacy = structuredClone(original);
 delete legacy.bingo.rows;
 delete legacy.bingo.columns;
 delete legacy.checked;
+delete legacy.bingo.cells[0].imageLayout;
+delete legacy.bingo.cells[1].imageLayout;
+delete legacy.bingo.cells[0].imageFit;
+delete legacy.bingo.cells[1].imageFit;
+delete legacy.bingo.cells[0].imagePosition;
 assert.deepEqual(parseGrids(serializeGrids([legacy]))[0].checked, []);
 assert.equal(parseGrids(serializeGrids([legacy]))[0].bingo.rows, 5);
+assert.equal(parseGrids(serializeGrids([legacy]))[0].bingo.cells[0].imageLayout, undefined);
+assert.equal(parseGrids(serializeGrids([legacy]))[0].bingo.cells[0].imageFit, undefined);
+assert.equal(parseGrids(serializeGrids([legacy]))[0].bingo.cells[0].imagePosition, undefined);
 assert.equal(parseGrids(serializeGrids([original, restored])).length, 2);
 const envelope = JSON.parse(serializeGrids([original]));
 for (const invalid of [null, {}, { ...envelope, version: 2 }, { ...envelope, grids: [] },
@@ -45,13 +54,28 @@ for (const invalid of [null, {}, { ...envelope, version: 2 }, { ...envelope, gri
   { ...envelope, grids: Array(201).fill(envelope.grids[0]) }]) {
   assert.throws(() => parseGrids(JSON.stringify(invalid)));
 }
-for (const checked of [[25], [-1], [0, 0], [0.5], [1], ["0"], null]) {
+for (const checked of [[25], [-1], [0, 0], [0.5], [2], ["0"], null]) {
   assert.equal(isChecked(checked, original.bingo), false);
   assert.throws(() => parseGrids(JSON.stringify({ ...envelope, grids: [{ bingo: original.bingo, checked }] })));
 }
 for (const patch of [{ rows: 1 }, { cells: [] }, { title: "X".repeat(37) },
   { cells: original.bingo.cells.map(() => ({ text: "", image: "https://example.com/image.png" })) }]) {
   assert.throws(() => parseGrids(JSON.stringify({ ...envelope, grids: [{ bingo: { ...original.bingo, ...patch } }] })));
+}
+for (const imageLayout of [null, "sideways", 1, {}]) {
+  const invalid = structuredClone(original);
+  invalid.bingo.cells[0].imageLayout = imageLayout;
+  assert.throws(() => parseGrids(serializeGrids([invalid])));
+}
+for (const imageFit of [null, "stretch", 1, {}]) {
+  const invalid = structuredClone(original);
+  invalid.bingo.cells[0].imageFit = imageFit;
+  assert.throws(() => parseGrids(serializeGrids([invalid])));
+}
+for (const imagePosition of [null, {}, { x: 50 }, { x: "50", y: 50 }, { x: -1, y: 50 }, { x: 50, y: 101 }, { x: Infinity, y: 50 }]) {
+  const invalid = structuredClone(original);
+  invalid.bingo.cells[0].imagePosition = imagePosition;
+  assert.throws(() => parseGrids(serializeGrids([invalid])));
 }
 assert.throws(() => parseGrids("not json"));
 assert.throws(() => parseGrids(" ".repeat(MAX_IMPORT_BYTES + 1)));
@@ -74,6 +98,18 @@ const unchecked = travelHistory(history, { ...reduced, checked: [] }, "undo");
 assert.deepEqual(unchecked.grid.checked, [], "Undo does not restore earlier check progress");
 assert.equal(recordEdit(undone.history, undone.grid, undefined, 2400).future.length, 0);
 assert.equal(travelHistory(emptyHistory(), original, "undo"), null);
+const changedLayout = structuredClone(original);
+changedLayout.bingo.cells[0].imageLayout = "background";
+changedLayout.bingo.cells[0].imageFit = "cover";
+changedLayout.bingo.cells[0].imagePosition = { x: 50, y: 50 };
+const layoutUndo = travelHistory(recordEdit(emptyHistory(), original, undefined, 3000), changedLayout, "undo");
+assert.equal(layoutUndo.grid.bingo.cells[0].imageLayout, "above");
+assert.equal(layoutUndo.grid.bingo.cells[0].imageFit, "contain");
+assert.deepEqual(layoutUndo.grid.bingo.cells[0].imagePosition, { x: 10, y: 90 });
+const layoutRedo = travelHistory(layoutUndo.history, layoutUndo.grid, "redo");
+assert.equal(layoutRedo.grid.bingo.cells[0].imageLayout, "background");
+assert.equal(layoutRedo.grid.bingo.cells[0].imageFit, "cover");
+assert.deepEqual(layoutRedo.grid.bingo.cells[0].imagePosition, { x: 50, y: 50 });
 for (let i = 0; i < 60; i++) history = recordEdit(history, original, undefined, i * 1000);
 assert.equal(history.past.length, 50);
 
@@ -109,6 +145,14 @@ await Promise.all([saveLibrary([original], original.id), saveLibrary([restored],
 const library = await initializeLibrary(createStarterBingo("en"));
 assert.equal(library.activeId, restored.id, "Last requested save wins");
 assert.deepEqual(library.grids[0].checked, [0, 24]);
+assert.equal(library.grids[0].bingo.cells[0].imageLayout, "above");
+assert.equal(library.grids[0].bingo.cells[0].imageFit, "contain");
+assert.deepEqual(library.grids[0].bingo.cells[0].imagePosition, { x: 10, y: 90 });
 await saveLibrary([legacy], legacy.id);
 assert.equal((await initializeLibrary(createStarterBingo("en"))).activeId, legacy.id);
+legacy.preview = "previously-saved-thumbnail";
+await saveLibrary([legacy, original], legacy.id);
+const mixedLibrary = await initializeLibrary(createStarterBingo("en"));
+assert.equal(mixedLibrary.activeId, legacy.id);
+assert.deepEqual(mixedLibrary.grids, [legacy, original], "Old and new grids, metadata, thumbnails and checkmarks survive loading together unchanged");
 console.log("Passed: progress persistence, legacy grids, ordered saves, import/export round trips and invalid files, grouped undo/redo independent from check progress.");

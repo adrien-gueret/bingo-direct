@@ -51,7 +51,13 @@ export function parseGrids(source: string): StoredBingo[] {
       theme: bingo.theme,
       rows: bingo.rows ?? 5,
       columns: bingo.columns ?? 5,
-      cells: bingo.cells.map(({ text, image }) => ({ text, image })),
+      cells: bingo.cells.map(({ text, image, imageLayout, imageFit, imagePosition }) => ({
+        text,
+        image,
+        ...(imageLayout === undefined ? {} : { imageLayout }),
+        ...(imageFit === undefined ? {} : { imageFit }),
+        ...(imagePosition === undefined ? {} : { imagePosition: { x: imagePosition.x, y: imagePosition.y } }),
+      })),
     }),
     checked: [...checked],
   }));

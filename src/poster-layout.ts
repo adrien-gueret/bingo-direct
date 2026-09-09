@@ -11,7 +11,8 @@ export const fitPosterText = (poster: HTMLElement) => {
   }
   for (const text of poster.querySelectorAll<HTMLElement>(".cell-text")) {
     const cell = text.parentElement!;
-    const available = cell.clientHeight - 20;
+    // Leave at least half the cell for the image; short captions let it grow further.
+    const available = cell.classList.contains("image-above") ? cell.clientHeight / 2 : cell.clientHeight - 20;
     let size = 14;
     text.style.fontSize = `${size}px`;
     while (text.scrollHeight > available && size > 8) {

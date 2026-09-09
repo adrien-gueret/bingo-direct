@@ -771,7 +771,7 @@ main {
   border-radius: inherit;
 }
 
-.play-cell.has-image .cell-image {
+.play-cell.has-image:not(.image-above) .cell-image {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -779,11 +779,11 @@ main {
   border-radius: inherit;
 }
 
-.play-cell.has-image {
+.play-cell.has-image:not(.image-above) {
   justify-content: flex-end;
 }
 
-.play-cell.has-image .cell-text {
+.play-cell.has-image:not(.image-above) .cell-text {
   position: absolute;
   left: 0;
   bottom: 0;
@@ -1000,7 +1000,9 @@ main {
 }
 
 .cell-editor-dialog {
-  width: min(480px, 100%);
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
   padding: 25px;
   border: 1px solid rgba(37, 28, 29, 0.1);
   border-radius: 22px;
@@ -1311,19 +1313,133 @@ main {
   text-align: right;
 }
 
-.cell-editor-preview {
-  position: relative;
-  height: 112px;
-  margin-top: 14px;
-  overflow: hidden;
-  border-radius: 12px;
-  background: #eee9e7;
+.cell-editor-image-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(96px, 28vw, 160px);
+  align-items: start;
+  gap: 16px;
+  margin-top: 19px;
 }
 
-.cell-editor-preview img {
+.cell-image-options .cell-image-layout:first-child {
+  margin-top: 0;
+}
+
+.cell-editor-image-settings.preview-only {
+  grid-template-columns: minmax(0, 160px);
+  justify-content: center;
+}
+
+.cell-editor-image-settings.preview-only .cell-image-options { display: none; }
+
+@media (max-width: 600px) {
+  .cell-image-options .cell-image-layout > div { grid-template-columns: 1fr; }
+}
+
+.cell-editor-preview {
+  min-width: 0;
+  margin: 0;
+}
+
+.cell-editor-preview figcaption {
+  margin-bottom: 6px;
+  color: #766d6e;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cell-preview-frame {
+  position: relative;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 9px;
+}
+
+.cell-preview-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+.cell-preview-frame.can-pan {
+  touch-action: none;
+  user-select: none;
+}
+
+.cell-preview-frame.can-pan:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.cell-preview-frame.can-pan .cell-image { cursor: move; }
+
+.cell-pan-controls p {
+  margin: 8px 0 0;
+  color: #766d6e;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+
+.cell-image-layout {
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.cell-image-layout legend {
+  margin-bottom: 8px;
+  color: #766d6e;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cell-image-layout > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cell-image-layout label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 10px;
+  border: 1px solid #ded8d5;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cell-image-layout label:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.cell-image-layout label:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.cell-image-layout input {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.cell-image-layout small {
+  display: block;
+  margin-top: 4px;
+  color: #766d6e;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
 }
 
 .cell-editor-actions {
@@ -1879,11 +1995,15 @@ main {
 .canonical-poster .play-cell { padding: 10px; gap: 6px; transition: none; }
 .canonical-poster .play-cell:hover { transform: none; }
 .canonical-poster .cell-image { height: 54%; min-height: 0; flex-shrink: 1; object-fit: cover; border-radius: 5px; }
-.canonical-poster .play-cell.has-image .cell-image { height: 100%; border-radius: inherit; }
+.canonical-poster .play-cell.has-image:not(.image-above) .cell-image { height: 100%; border-radius: inherit; }
+.canonical-poster .play-cell.image-above { padding: 0; gap: 0; justify-content: flex-start; }
+.canonical-poster .image-above .cell-image { flex: 1; height: 0; min-height: 50%; border-radius: 0; }
+.canonical-poster .image-above .cell-text { width: 100%; padding: 7px 8px 8px; text-align: center; }
 .canonical-poster .cell-text { font-size: 14px; font-weight: 700; line-height: 1.12; flex-shrink: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .canonical-poster .image-only .cell-image { height: 100%; border-radius: inherit; }
 .canonical-poster .checkmark { top: 7px; right: 7px; width: 23px; height: 23px; font-size: 13px; transition: none; }
 .canonical-poster .edit-empty-plus { font-size: 40px; }
+.cell-preview-canvas .play-cell { width: 100%; height: 100%; cursor: default; text-align: center; box-shadow: none; }
 .canonical-poster .poster-footer { position: absolute; top: 891px; left: 32px; right: 32px; margin: 0; padding: 0; font-size: 9px; gap: 12px; }
 .canonical-poster .poster-brand { display: inline-flex; align-items: baseline; gap: 8px; margin-left: auto; white-space: nowrap; }
 .canonical-poster .poster-brand > span { font-size: 8px; font-weight: 500; letter-spacing: 0; text-transform: none; }
